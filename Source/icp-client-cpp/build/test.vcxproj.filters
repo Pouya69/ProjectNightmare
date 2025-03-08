@@ -1,0 +1,45 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\lib-agent-cpp\tests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\agent.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\func.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\helper.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\identity.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\idl_args.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\idl_value.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\principal.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+    <Object Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\agent_cpp_tests.dir\$(Configuration)\service.obj">
+      <Filter>Object Libraries</Filter>
+    </Object>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Object Libraries">
+      <UniqueIdentifier>{1B4AFBE1-F089-3906-9F5B-318A9C683FFA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{A2101899-BA2B-3BC7-AA49-C6311F28CD93}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,9 @@
+﻿  Building Custom Rule E:/Dev/Unreal Projects/ProjectNightmare/Source/icp-client-cpp/CMakeLists.txt
+  agent_c.c
+E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\lib-agent-c\src\agent_c.c(40,51): warning C4244: 'function': conversion from 'uintptr_t' to 'int', possible loss of data
+  helper_c.c
+E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\lib-agent-c\src\helper_c.c(23,18): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\lib-agent-c\src\helper_c.c(38,18): warning C4996: 'fopen': This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details.
+  identity_c.c
+  Generating Code...
+  agent_c.vcxproj -> E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\Release\agent_c.lib

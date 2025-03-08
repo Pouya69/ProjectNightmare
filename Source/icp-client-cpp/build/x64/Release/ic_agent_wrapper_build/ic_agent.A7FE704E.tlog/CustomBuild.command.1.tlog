@@ -1,0 +1,32 @@
+^E:\DEV\UNREAL PROJECTS\PROJECTNIGHTMARE\SOURCE\ICP-CLIENT-CPP\BUILD\CMAKEFILES\05F47BFC5C17DDE75AD549DA6A3135ED\IC_AGENT_WRAPPER.LIB.RULE
+setlocal
+cd "E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\ic-agent-wrapper"
+if %errorlevel% neq 0 goto :cmEnd
+E:
+if %errorlevel% neq 0 goto :cmEnd
+cargo build --release
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^E:\DEV\UNREAL PROJECTS\PROJECTNIGHTMARE\SOURCE\ICP-CLIENT-CPP\BUILD\CMAKEFILES\D5F7EEE688AB3BAA5932E53AEAB89BAA\IC_AGENT_WRAPPER_BUILD.RULE
+setlocal
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
+^E:\DEV\UNREAL PROJECTS\PROJECTNIGHTMARE\SOURCE\ICP-CLIENT-CPP\CMAKELISTS.TXT
+setlocal
+"C:\Program Files\CMake\bin\cmake.exe" "-SE:/Dev/Unreal Projects/ProjectNightmare/Source/icp-client-cpp" "-BE:/Dev/Unreal Projects/ProjectNightmare/Source/icp-client-cpp/build" --check-stamp-file "E:/Dev/Unreal Projects/ProjectNightmare/Source/icp-client-cpp/build/CMakeFiles/generate.stamp"
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

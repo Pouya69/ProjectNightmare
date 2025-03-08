@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="E:\Dev\Unreal Projects\ProjectNightmare\Source\icp-client-cpp\build\CMakeFiles\d5f7eee688ab3baa5932e53aeab89baa\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{18D4D87D-B6C6-3DB8-9442-36CC50E5EA74}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
