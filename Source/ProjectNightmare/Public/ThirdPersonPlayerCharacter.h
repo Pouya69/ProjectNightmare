@@ -33,6 +33,7 @@ protected:
 public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	virtual void Tick(float DeltaTime) override;
+	virtual void Die() override;
 
 public:
 	// Delegates
@@ -231,6 +232,8 @@ public:
 		void Interact(const FInputActionInstance& ActionInstance);
 	UFUNCTION(BlueprintCallable)
 		void PickupWeapon(AWeapon* WeaponToPickup);
+	UFUNCTION(BlueprintCallable)
+		void DropWeapon(AWeapon* WeaponToDrop);
 	UPROPERTY(EditAnywhere)
 		FName WeaponAttachmentSocketName;
 	UPROPERTY(EditAnywhere)

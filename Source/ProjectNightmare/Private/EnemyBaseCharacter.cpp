@@ -13,7 +13,6 @@ void AEnemyBaseCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	EnemyAIController = Cast<AEnemyBaseAIController>(GetController());
-	
 }
 
 void AEnemyBaseCharacter::Tick(float DeltaTime)
@@ -23,5 +22,6 @@ void AEnemyBaseCharacter::Tick(float DeltaTime)
 
 void AEnemyBaseCharacter::AttackPlayer()
 {
-
+	if (AttackMontage)
+		PlayAnimMontage(AttackMontage);
 }

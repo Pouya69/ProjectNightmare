@@ -27,6 +27,16 @@ public:
 		class UProjectileMovementComponent* ProjectileMovementComponent;
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		class USphereComponent* SphereComp;
+	UPROPERTY(EditAnywhere, Category = "Explosion")
+		class USphereComponent* ExplosionSphereComp;
+	UPROPERTY(EditAnywhere, Category = "Explosion")
+		float GrenadeDamage = 150.f;
+	UPROPERTY(EditAnywhere, Category = "Explosion")
+		float GrenadeExplosionRadius = 100.f;
+	UPROPERTY(EditAnywhere, Category = "Explosion")
+		TSubclassOf<UDamageType> GrenadeExplosionDamageType;
+	UPROPERTY(EditAnywhere, Category = "Explosion")
+		float GrenadeExplosionStrength = 800.f;
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		USceneComponent* RootComp;
 

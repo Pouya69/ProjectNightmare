@@ -18,6 +18,10 @@ void ACharacterBase::BeginPlay()
 {
 	Super::BeginPlay();
 	Health = MaxHealth;
+	OnTakePointDamage.AddDynamic(this, &ACharacterBase::TakePointDamage);
+	OnTakeRadialDamage.AddDynamic(this, &ACharacterBase::TakeRadialDamage);
+	//OnTakeAnyDamage.AddDynamic(this, &ACharacterBase::TakeAnyDamage);
+	// OnTakeAnyDamage.AddDynamic(this, &ACharacterBase::TakeDamage);
 }
 
 // Called every frame
@@ -25,6 +29,34 @@ void ACharacterBase::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void ACharacterBase::TakePointDamage(AActor* DamagedActor, float Damage, AController* InstigatedBy, FVector HitLocation, UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const UDamageType* DamageType, AActor* DamageCauser)
+{
+	ReduceHealth(Damage);
+	UE_LOG(LogTemp, Warning, TEXT("New Health BULLET: %f"), Health);
+	// TODO: Effects and animation
+}
+
+void ACharacterBase::TakeRadialDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, AController* InstigatedBy, AActor* DamageCauser)
+{
+	ReduceHealth(Damage);
+	UE_LOG(LogTemp, Warning, TEXT("New Health: %f"), Health);
+	// TODO: Effects and animation
+}
+
+float ACharacterBase::TakeDamage(float DamageAmount, FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser)
+{
+	const float ActualDamage = Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+	//ReduceHealth(ActualDamage);
+	//UE_LOG(LogTemp, Warning, TEXT("New Health TEST: %f"), Health);
+	return ActualDamage;
+}
+
+void ACharacterBase::TakeAnyDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, AController* InstigatedBy, AActor* DamageCauser)
+{
+	ReduceHealth(Damage);
+	UE_LOG(LogTemp, Warning, TEXT("ANY New Health: %f"), Health);
 }
 
 void ACharacterBase::AddHealth(float Amount)
@@ -39,6 +71,11 @@ float ACharacterBase::GetCharacterMass() const
 
 void ACharacterBase::Die()
 {
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	// GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+	DisableInput(GetLocalViewingPlayerController());
+	GetMesh()->SetSimulatePhysics(true);
 	OnDeath.Broadcast();
 	
 }

@@ -39,7 +39,7 @@ void ACutsceneTrigger::Tick(float DeltaTime)
 
 void ACutsceneTrigger::StartCutscene(AThirdPersonPlayerCharacter* PlayerCharacterRef, bool bShouldDestroy)
 {
-
+	if (!PlayerCharacterRef->MyPlayerController) return;
 	PlayerCharacterRef->MyPlayerController->SetControlRotation(CutsceneController->OtherCharacterInCutscene->GetActorRotation());
 	PlayerCharacterRef->SetActorLocation(CutsceneController->OtherCharacterInCutscene->GetActorLocation());
 	PlayerCharacterRef->ChangePlayerCollision(false);

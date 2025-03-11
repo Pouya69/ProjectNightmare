@@ -29,5 +29,10 @@ public:
 		class AEnemyBaseAIController* EnemyAIController;
 
 	UFUNCTION(BlueprintCallable)
-		void AttackPlayer();
+		virtual void AttackPlayer();
+
+public:
+	// Anim Montages
+	UPROPERTY(EditAnywhere, Category="Animations")
+		UAnimMontage* AttackMontage;
 };

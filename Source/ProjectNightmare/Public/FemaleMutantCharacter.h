@@ -14,4 +14,6 @@ class PROJECTNIGHTMARE_API AFemaleMutantCharacter : public AEnemyBaseCharacter
 {
 	GENERATED_BODY()
 	
+public:
+	virtual void AttackPlayer() override;
 };

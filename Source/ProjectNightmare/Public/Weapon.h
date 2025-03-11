@@ -43,17 +43,29 @@ public:
 	UPROPERTY(EditAnywhere)
 		UAnimMontage* UnEquipMontage;
 	UPROPERTY(EditAnywhere)
+		UAnimMontage* SelfReloadMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* SelfReloadADSMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* SelfShootMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* SelfEquipMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* SelfUnEquipMontage;
+	UPROPERTY(EditAnywhere)
 		class UAimOffsetBlendSpace* HIP_AimOffset;
 	UPROPERTY(EditAnywhere)
 		class UAimOffsetBlendSpace* AIM_AimOffset;
 
 public:
 	UPROPERTY(EditAnywhere)
+		TSubclassOf<UDamageType> WeaponDamageType;
+	UPROPERTY(EditAnywhere)
 		bool bShouldAimToShoot;
 	// Combat
 	UPROPERTY(EditAnywhere)
 		float BaseDamage;
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		int CurrentBulletsLeft;
 	UPROPERTY(EditAnywhere)
 		int MaxBulletsMagazine;

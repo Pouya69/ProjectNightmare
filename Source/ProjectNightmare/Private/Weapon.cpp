@@ -4,6 +4,7 @@
 #include "Weapon.h"
 #include "CharacterBase.h"
 #include "WeaponAnimInstance.h"
+#include "Kismet/GameplayStatics.h"
 #include "Animation/AimOffsetBlendSpace.h"
 
 AWeapon::AWeapon()
@@ -24,25 +25,41 @@ bool AWeapon::Reload()
 {
 	if (CurrentBulletsLeft >= MaxBulletsMagazine) return false;
 	if (TotalBulletsLeft <= 0) return false;
-	WeaponAnimInstance->Reload(ReloadMontage);
+	if (WeaponAnimInstance)
+		WeaponAnimInstance->Reload(SelfReloadMontage);
 	return true;
 }
 
 bool AWeapon::Shoot(FVector& EndLocation)
 {
-	if (CurrentBulletsLeft <= 0 || bIsReloadingWeapon) return false;
-	WeaponAnimInstance->Shoot(ShootMontage);
-	FVector MuzzleLocation = GetSkeletalMeshComponent()->GetSocketLocation(FName("Muzzle"));
+	if (bIsReloadingWeapon) return false;
+	if (CurrentBulletsLeft <= 0) {
+		// TODO: Make sound of empty gun
+		return false;
+	}
+	CurrentBulletsLeft -= 1;
+	if (WeaponAnimInstance)
+		WeaponAnimInstance->Shoot(SelfShootMontage);
+	const FVector MuzzleLocation = GetSkeletalMeshComponent()->GetSocketLocation(FName("Muzzle"));
 	// TODO: spawn muzzle etc.
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
 	Params.AddIgnoredActor(GetOwner());
 	Params.AddIgnoredActor(this);
-	const bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, MuzzleLocation, EndLocation, ECollisionChannel::ECC_Visibility);
+	// DrawDebugLine(GetWorld(), MuzzleLocation, EndLocation, FColor::Red, true, -1.f, 0U, 5.f);
+	const bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, MuzzleLocation, EndLocation, ECollisionChannel::ECC_WorldStatic, Params);
+	
 	if (!bIsHit) return true;
-	if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(HitResult.GetActor())) {
-		CharacterHit->HitByWeapon(HitResult.ImpactPoint, HitResult.ImpactNormal, BaseDamage);
-	}
+	// UE_LOG(LogTemp, Warning, TEXT("HIT %s"), *HitResult.GetActor()->GetName());
+	UGameplayStatics::ApplyPointDamage(HitResult.GetActor(), BaseDamage, EndLocation - MuzzleLocation, HitResult, GetInstigatorController(), GetOwner(), WeaponDamageType);
+	//if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(HitResult.GetActor())) {
+		
+		//CharacterHit->HitByWeapon(HitResult.ImpactPoint, HitResult.ImpactNormal, BaseDamage);
+	//}
+
+
+
+	// TODO: Spawn hit marker
 	return true;
 }
 

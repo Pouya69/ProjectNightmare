@@ -3,3 +3,7 @@
 
 #include "FemaleMutantCharacter.h"
 
+void AFemaleMutantCharacter::AttackPlayer()
+{
+	Super::AttackPlayer();
+}

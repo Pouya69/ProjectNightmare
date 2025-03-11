@@ -83,6 +83,12 @@ void AThirdPersonPlayerCharacter::Tick(float DeltaTime)
 	SpringArmComp->TargetArmLength = FMath::FInterpTo(SpringArmComp->TargetArmLength, SpringArmLengthTarget, DeltaTime, SpringArmLengthTransitionRate);
 }
 
+void AThirdPersonPlayerCharacter::Die()
+{
+	SpringArmComp->bDoCollisionTest = false;
+	Super::Die();
+}
+
 void AThirdPersonPlayerCharacter::DeployDrone(const FInputActionInstance& ActionInstance)
 {
 	if (IsDroneInAir()) {
@@ -167,11 +173,13 @@ void AThirdPersonPlayerCharacter::Move(const FInputActionInstance& ActionInstanc
 
 void AThirdPersonPlayerCharacter::Evade(const FInputActionInstance& ActionInstance)
 {
-	if (!bCanEvade || !MyPlayerController->InputEnabled()) {
+	if (!bCanEvade || !MyPlayerController->InputEnabled() || GetMesh()->GetAnimInstance()->Montage_IsPlaying(nullptr)) {
 		UE_LOG(LogTemp, Warning, TEXT("CANNOT"));
 		return;
 	}
 	bCanEvade = false;
+	bIsAimingGrenade = false;
+	bIsAimingWeapon = false;
 	// ChangePlayerMovement(EMovementMode::MOVE_Flying);
 	// StopAnimMontage(CurrentWeapon->EquipMontage);
 	// StopAnimMontage(CurrentWeapon->UnEquipMontage);
@@ -441,7 +449,7 @@ void AThirdPersonPlayerCharacter::AimWeapon(const FInputActionInstance& ActionIn
 
 void AThirdPersonPlayerCharacter::ShootWeapon(const FInputActionInstance& ActionInstance)
 {
-	if (!MyPlayerController->InputEnabled()) return;
+	if (!MyPlayerController->InputEnabled() || CurrentWeapon == nullptr) return;
 	bIsAimingGrenade = false;
 	if (!bHasWeaponEquipped) return;
 	UCharacterMovementComponent* CharMovement = GetCharacterMovement();
@@ -452,11 +460,10 @@ void AThirdPersonPlayerCharacter::ShootWeapon(const FInputActionInstance& Action
 	FRotator Rotation;
 	MyPlayerController->GetPlayerViewPoint(Start, Rotation);
 	FVector End = Start + (CameraComp->GetForwardVector() * 10000.f);
-	if (CurrentWeapon != nullptr) CurrentWeapon->Shoot(End);
-	UAnimMontage* ShootAnimMontage = GetShootMontageBasedOnWeapon();
-	if (ShootAnimMontage) {
+	if (!CurrentWeapon->Shoot(End)) return;
+	if (CurrentWeapon->ShootMontage) {
 		// UE_LOG(LogTemp, Warning);
-		PlayAnimMontage(ShootAnimMontage);
+		PlayAnimMontage(CurrentWeapon->ShootMontage);
 	}
 	if (!ShootingCameraShake) return;
 	PlayerCameraManager->StartCameraShake(ShootingCameraShake);
@@ -471,6 +478,7 @@ void AThirdPersonPlayerCharacter::ClickerClick(const FInputActionInstance& Actio
 
 void AThirdPersonPlayerCharacter::StartGrenade(const FInputActionInstance& ActionInstance)
 {
+	StopAnimMontage();
 	bIsAimingGrenade = true;
 	if (CurrentWeapon != nullptr)
 		CurrentWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, WeaponAttachmentSocketName);
@@ -493,7 +501,7 @@ void AThirdPersonPlayerCharacter::ThrowGrenade(const FInputActionInstance& Actio
 		if (GrenadeThrowMontage)
 			PlayAnimMontage(GrenadeThrowMontage);
 	}
-	bIsAimingGrenade = false;
+	// bIsAimingGrenade = false;
 	// TODO: Throw on Anim Montage End
 	
 }
@@ -594,7 +602,14 @@ void AThirdPersonPlayerCharacter::ApplyEpicEffect(float TimeDilationAmount, FVec
 void AThirdPersonPlayerCharacter::PickupWeapon(AWeapon* WeaponToPickup)
 {
 	WeaponToPickup->SetOwner(this);
+	WeaponToPickup->SetInstigator(this);
 	CurrentWeapon = WeaponToPickup;
+}
+
+void AThirdPersonPlayerCharacter::DropWeapon(AWeapon* WeaponToDrop) {
+	WeaponToDrop->SetOwner(nullptr);
+	WeaponToDrop->SetInstigator(nullptr);
+	if (CurrentWeapon == WeaponToDrop) CurrentWeapon = nullptr;  // TODO: For other weapons (multiple weapons -> equip the next weapon instead).
 }
 
 void AThirdPersonPlayerCharacter::SetCutsceneController(ACutsceneController* NewCutsceneController)

@@ -79,7 +79,7 @@ public:
 	UPROPERTY(EditAnywhere)
 		float DamageToCharactersHit = 2.f;
 	UPROPERTY(EditAnywhere)
-		float DronePushbackForce = 50.f;
+		float DroneHeavyMultiplier = 0.1f;
 
 	class UPhysicsHandleComponent* PhysicsHandle;
 	UFUNCTION(BlueprintCallable)

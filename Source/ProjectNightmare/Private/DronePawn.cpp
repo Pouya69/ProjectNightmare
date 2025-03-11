@@ -8,6 +8,7 @@
 #include "Camera/CameraComponent.h"
 #include "InteractablePushableComponent.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values
 ADronePawn::ADronePawn()
@@ -38,9 +39,9 @@ void ADronePawn::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	const float MyMass = SkeletalMeshComp->GetMass();
 	const float CargoMass = GetTotalMassOfCargo();
-	UE_LOG(LogTemp, Warning, TEXT("Self: %f, CARGO: %f"), MyMass, CargoMass);
+	// UE_LOG(LogTemp, Warning, TEXT("Self: %f, CARGO: %f"), MyMass, CargoMass);
 	if (CargoMass > MyMass)
-		AddActorWorldOffset(FVector::DownVector * (CargoMass - MyMass) * 0.1, true);
+		AddActorWorldOffset(FVector::DownVector * (CargoMass - MyMass) * DroneHeavyMultiplier, true);
 	UPrimitiveComponent* GrabbedComp = PhysicsHandle->GetGrabbedComponent();
 	if (GrabbedComp != nullptr) {
 		FRotator NewRotation = GetActorRotation();
@@ -114,13 +115,13 @@ float ADronePawn::GetTotalMassOnTopOfHandledCargo() const {
 	const FBox box = GrabbedComp->GetLocalBounds().GetBox();
 	const FVector Start = GrabbedComp->GetCenterOfMass();
 	const FVector BoxSize = box.GetExtent();
-	// const FRotator rotation = GrabbedComp->GetComponentRotation();
+	const FRotator rotation = GrabbedComp->GetComponentRotation();
 	const FVector End = Start + (FVector::UpVector * (5 + BoxSize.Z));
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredComponent(GrabbedComp);
 	// DrawDebugBox(GetWorld(), End, FVector(BoxSize.X + BoxSize.X / 4, BoxSize.Y + BoxSize.Y / 4, 3), FColor::Red);
-	const bool bIsHit = GetWorld()->SweepMultiByChannel(HitResults, Start, End, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeBox(FVector(BoxSize.X+ BoxSize.X/4, BoxSize.Y+ BoxSize.Y / 4, 3)), QueryParams);
+	const bool bIsHit = GetWorld()->SweepMultiByChannel(HitResults, Start, End, FQuat(GrabbedComp->GetComponentRotation()), ECC_WorldStatic, FCollisionShape::MakeBox(FVector(BoxSize.X + BoxSize.X / 3, BoxSize.Y + BoxSize.Y / 3, 3)), QueryParams);
 	if (!bIsHit)
 		return 0.f;
 	float TotalMass = 0.f;
@@ -240,9 +241,11 @@ void ADronePawn::OnCollisionWithObject(AActor* SelfActor, AActor* OtherActor, FV
 	if (UInteractablePushableComponent* PushedComp = Cast<UInteractablePushableComponent>(Hit.GetComponent())) {
 		PushedComp->InteractPush();
 	}
-	if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(OtherActor)) {
-		CharacterHit->ReduceHealth(DamageToCharactersHit);
-	}
+	//UGameplayStatics::ApplyPointDamage(OtherActor, DamageToCharactersHit, Hit.ImpactNormal, Hit, nullptr, this, UDamageType::StaticClass());
+	//UGameplayStatics::ApplyPointDamage(SelfActor, 2.f, FVector::ZeroVector, Hit, nullptr, nullptr, UDamageType::StaticClass());
+	//if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(OtherActor)) {
+	//	CharacterHit->ReduceHealth(DamageToCharactersHit);
+	//}
 }
 
 void ADronePawn::TakeControlOfDrone(AThirdPersonPlayerCharacter* InPlayerCharacterRef)
