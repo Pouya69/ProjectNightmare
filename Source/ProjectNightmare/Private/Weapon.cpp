@@ -21,6 +21,21 @@ void AWeapon::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 }
 
+bool AWeapon::GetDamageMultiplierBoneHit(const FName& BoneName, float& Damage) const
+{
+	// default
+	// if (BoneName.IsEqual("pelvis") || BoneName.IsEqual("spine_01") || BoneName.IsEqual("spine_02") || BoneName.IsEqual("upperarm_l") || BoneName.IsEqual("upperarm_r") || BoneName.IsEqual("lowerarm_l") || BoneName.IsEqual("lowerarm_r"))
+	if (BoneName.IsEqual("head") || BoneName.IsEqual("neck_01")) {
+		Damage *= HeadshotDamageMultiplier;
+		return true;
+	}
+	else if (BoneName.IsEqual("clavicle_l") || BoneName.IsEqual("clavicle_r") || BoneName.IsEqual("spine_02") || BoneName.IsEqual("spine_03") || BoneName.IsEqual("upperarm_twist_01_l") || BoneName.IsEqual("upperarm_twist_01_r"))
+		Damage *= UpperbodyDamageMultiplier;
+	else if (BoneName.IsEqual("spine_01") || BoneName.IsEqual("pelvis"))
+		Damage *= LowerbodyDamageMultiplier;
+	return false;
+}
+
 bool AWeapon::Reload()
 {
 	if (CurrentBulletsLeft >= MaxBulletsMagazine) return false;
@@ -30,7 +45,7 @@ bool AWeapon::Reload()
 	return true;
 }
 
-bool AWeapon::Shoot(FVector& EndLocation)
+bool AWeapon::Shoot(const FVector& StartLocation, const FVector& EndLocation)
 {
 	if (bIsReloadingWeapon) return false;
 	if (CurrentBulletsLeft <= 0) {
@@ -47,11 +62,14 @@ bool AWeapon::Shoot(FVector& EndLocation)
 	Params.AddIgnoredActor(GetOwner());
 	Params.AddIgnoredActor(this);
 	// DrawDebugLine(GetWorld(), MuzzleLocation, EndLocation, FColor::Red, true, -1.f, 0U, 5.f);
-	const bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, MuzzleLocation, EndLocation, ECollisionChannel::ECC_WorldStatic, Params);
+	const bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECollisionChannel::ECC_Visibility, Params);
 	
 	if (!bIsHit) return true;
+	float FinalDamage = BaseDamage;
+	if (!HitResult.BoneName.IsNone())
+		const bool bWasCriticalHit = GetDamageMultiplierBoneHit(HitResult.BoneName, FinalDamage);
 	// UE_LOG(LogTemp, Warning, TEXT("HIT %s"), *HitResult.GetActor()->GetName());
-	UGameplayStatics::ApplyPointDamage(HitResult.GetActor(), BaseDamage, EndLocation - MuzzleLocation, HitResult, GetInstigatorController(), GetOwner(), WeaponDamageType);
+	UGameplayStatics::ApplyPointDamage(HitResult.GetActor(), FinalDamage, EndLocation - StartLocation, HitResult, GetInstigatorController(), GetOwner(), WeaponDamageType);
 	//if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(HitResult.GetActor())) {
 		
 		//CharacterHit->HitByWeapon(HitResult.ImpactPoint, HitResult.ImpactNormal, BaseDamage);

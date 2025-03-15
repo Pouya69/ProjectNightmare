@@ -6,7 +6,6 @@
 #include "GameFramework/Character.h"
 #include "CharacterBase.generated.h"
 
-
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnDeath);
 UCLASS()
 class PROJECTNIGHTMARE_API ACharacterBase : public ACharacter
@@ -25,15 +24,16 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 	UFUNCTION()
-		void TakePointDamage(AActor* DamagedActor, float Damage, class AController* InstigatedBy, FVector HitLocation, class UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const class UDamageType* DamageType, AActor* DamageCauser);
+		virtual void TakePointDamage(AActor* DamagedActor, float Damage, class AController* InstigatedBy, FVector HitLocation, class UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const class UDamageType* DamageType, AActor* DamageCauser);
 	UFUNCTION()
-		void TakeRadialDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, class AController* InstigatedBy, AActor* DamageCauser);
+		virtual void TakeRadialDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, class AController* InstigatedBy, AActor* DamageCauser);
 
 	UFUNCTION()
 		virtual float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator, class AActor* DamageCauser) override;
 
 	UFUNCTION()
 		void TakeAnyDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, class AController* InstigatedBy, AActor* DamageCauser);
+
 public:
 	UPROPERTY(EditAnywhere, Category="Health")
 		float MaxHealth = 100.f;
@@ -58,6 +58,14 @@ public:
 		float GetCapsuleRadius() const;
 	UFUNCTION(BlueprintCallable)
 		float GetCapsuleHalfHeight() const;
+
+public:
+	// Dismemberment
+
+	class ULimbDismemberment* DismembermentComp;
+
+	UFUNCTION(BlueprintCallable)
+		void ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation);
 
 private:
 	float Health;

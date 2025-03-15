@@ -460,7 +460,7 @@ void AThirdPersonPlayerCharacter::ShootWeapon(const FInputActionInstance& Action
 	FRotator Rotation;
 	MyPlayerController->GetPlayerViewPoint(Start, Rotation);
 	FVector End = Start + (CameraComp->GetForwardVector() * 10000.f);
-	if (!CurrentWeapon->Shoot(End)) return;
+	if (!CurrentWeapon->Shoot(Start, End)) return;
 	if (CurrentWeapon->ShootMontage) {
 		// UE_LOG(LogTemp, Warning);
 		PlayAnimMontage(CurrentWeapon->ShootMontage);

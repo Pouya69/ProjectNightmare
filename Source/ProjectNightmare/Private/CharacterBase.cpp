@@ -4,6 +4,7 @@
 #include "CharacterBase.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "LimbDismemberment.h"
 
 // Sets default values
 ACharacterBase::ACharacterBase()
@@ -20,6 +21,7 @@ void ACharacterBase::BeginPlay()
 	Health = MaxHealth;
 	OnTakePointDamage.AddDynamic(this, &ACharacterBase::TakePointDamage);
 	OnTakeRadialDamage.AddDynamic(this, &ACharacterBase::TakeRadialDamage);
+	DismembermentComp = FindComponentByClass<ULimbDismemberment>();
 	//OnTakeAnyDamage.AddDynamic(this, &ACharacterBase::TakeAnyDamage);
 	// OnTakeAnyDamage.AddDynamic(this, &ACharacterBase::TakeDamage);
 }
@@ -33,6 +35,7 @@ void ACharacterBase::Tick(float DeltaTime)
 
 void ACharacterBase::TakePointDamage(AActor* DamagedActor, float Damage, AController* InstigatedBy, FVector HitLocation, UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const UDamageType* DamageType, AActor* DamageCauser)
 {
+	if (!IsAlive()) return;
 	ReduceHealth(Damage);
 	UE_LOG(LogTemp, Warning, TEXT("New Health BULLET: %f"), Health);
 	// TODO: Effects and animation
@@ -40,6 +43,7 @@ void ACharacterBase::TakePointDamage(AActor* DamagedActor, float Damage, AContro
 
 void ACharacterBase::TakeRadialDamage(AActor* DamagedActor, float Damage, const UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, AController* InstigatedBy, AActor* DamageCauser)
 {
+	if (!IsAlive()) return;
 	ReduceHealth(Damage);
 	UE_LOG(LogTemp, Warning, TEXT("New Health: %f"), Health);
 	// TODO: Effects and animation
@@ -104,3 +108,17 @@ float ACharacterBase::GetCapsuleHalfHeight() const
 	return GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
 }
 
+
+void ACharacterBase::ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation)
+{
+	if (!DismembermentComp || BoneName.IsNone()) return;
+	DismembermentComp->ApplyDismembermentToLimb(BoneName, Impulse, HitLocation);
+	
+	//if (GetMesh()->BoneIsChildOf(BoneName, RightHandArmBoneName)) {
+	//	const FTransform BoneTransform = GetMesh()->GetBoneTransform(RightHandArmBoneName);
+	//	GetMesh()->HideBoneByName(RightHandArmBoneName, EPhysBodyOp::PBO_Term);
+	//	// TODO: Spawn the dismemberment
+	//}
+
+
+}

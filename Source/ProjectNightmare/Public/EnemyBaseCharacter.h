@@ -31,6 +31,10 @@ public:
 	UFUNCTION(BlueprintCallable)
 		virtual void AttackPlayer();
 
+	virtual void Die() override;
+	virtual void TakePointDamage(AActor* DamagedActor, float Damage, class AController* InstigatedBy, FVector HitLocation, class UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const class UDamageType* DamageType, AActor* DamageCauser) override;
+	virtual void TakeRadialDamage(AActor* DamagedActor, float Damage, const class UDamageType* DamageType, FVector Origin, const FHitResult& HitInfo, class AController* InstigatedBy, AActor* DamageCauser) override;
+
 public:
 	// Anim Montages
 	UPROPERTY(EditAnywhere, Category="Animations")

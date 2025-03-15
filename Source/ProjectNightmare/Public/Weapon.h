@@ -9,6 +9,7 @@
 /**
  * 
  */
+
 UCLASS()
 class PROJECTNIGHTMARE_API AWeapon : public ASkeletalMeshActor
 {
@@ -58,6 +59,19 @@ public:
 		class UAimOffsetBlendSpace* AIM_AimOffset;
 
 public:
+	// Damage multiplier AND dismemberment
+	UFUNCTION(BlueprintCallable, Category="Damage multiplier AND dismemberment")
+		bool GetDamageMultiplierBoneHit(const FName& BoneName, float& Damage) const;
+
+	UPROPERTY(EditAnywhere, Category="Damage multiplier AND dismemberment")
+		float HeadshotDamageMultiplier = 2.f;
+	UPROPERTY(EditAnywhere, Category = "Damage multiplier AND dismemberment")
+		float UpperbodyDamageMultiplier = 1.5f;
+	UPROPERTY(EditAnywhere, Category = "Damage multiplier AND dismemberment")
+		float LowerbodyDamageMultiplier = 1.2f;
+	
+
+public:
 	UPROPERTY(EditAnywhere)
 		TSubclassOf<UDamageType> WeaponDamageType;
 	UPROPERTY(EditAnywhere)
@@ -76,7 +90,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 		bool bIsReloadingWeapon;
 	UFUNCTION(BlueprintCallable)
-		bool Shoot(FVector& EndLocation);
+		bool Shoot(const FVector& StartLocation, const FVector& EndLocation);
 	UFUNCTION(BlueprintCallable)
 		bool WeaponHasOwner() const;
 };
