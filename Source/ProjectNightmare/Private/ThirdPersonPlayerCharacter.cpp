@@ -19,6 +19,8 @@
 #include "WarpCheckerComponent.h"
 #include "DronePawn.h"
 #include "CharacterGrenadeHandler.h"
+#include "SpecialAbilityHandlerComponent.h"
+#include "Kismet/KismetMathLibrary.h"
 
 AThirdPersonPlayerCharacter::AThirdPersonPlayerCharacter()
 {
@@ -42,12 +44,15 @@ void AThirdPersonPlayerCharacter::SetupPlayerInputComponent(UInputComponent* Pla
 	PlayerEnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::AimWeapon);
 	PlayerEnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::ShootWeapon);
 	PlayerEnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Sprint);
-	PlayerEnhancedInputComponent->BindAction(ClickerAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::ClickerClick);
 	PlayerEnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Reload);
 	PlayerEnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Evade);
 	PlayerEnhancedInputComponent->BindAction(MeleeAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Melee);
 	PlayerEnhancedInputComponent->BindAction(InteractAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Interact);
 	PlayerEnhancedInputComponent->BindAction(DroneDeployAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::DeployDrone);
+
+	PlayerEnhancedInputComponent->BindAction(SpecialAction, ETriggerEvent::Started, this, &AThirdPersonPlayerCharacter::SpecialStart);
+	PlayerEnhancedInputComponent->BindAction(SpecialAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::SpecialHold);
+	PlayerEnhancedInputComponent->BindAction(SpecialAction, ETriggerEvent::Completed, this, &AThirdPersonPlayerCharacter::SpecialRelease);
 
 	PlayerEnhancedInputComponent->BindAction(GrenadeAction, ETriggerEvent::Started, this, &AThirdPersonPlayerCharacter::StartGrenade);
 	PlayerEnhancedInputComponent->BindAction(GrenadeAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::AimGrenade);
@@ -63,6 +68,7 @@ void AThirdPersonPlayerCharacter::BeginPlay()
 	SpringArmComp = FindComponentByClass<USpringArmComponent>();
 	CameraComp = FindComponentByClass<UCameraComponent>();
 	WarpHandlerComponent = FindComponentByClass<UWarpCheckerComponent>();
+	SpecialAbilityHandlerComp = FindComponentByClass<USpecialAbilityHandlerComponent>();
 	GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 	bIsAimingWeapon = false;
 	SpringArmLengthInital = SpringArmComp->TargetArmLength;
@@ -87,6 +93,26 @@ void AThirdPersonPlayerCharacter::Die()
 {
 	SpringArmComp->bDoCollisionTest = false;
 	Super::Die();
+}
+
+void AThirdPersonPlayerCharacter::StartRagdolling()
+{
+	if (CurrentWeapon)
+		DropWeapon(CurrentWeapon);
+	StopAimimg();
+	bIsAimingGrenade = false;
+	Super::StartRagdolling();
+}
+
+void AThirdPersonPlayerCharacter::AddImpulseToCharacter(const FVector& Impulse)
+{
+	// GetCharacterMovement()->AddImpulse(Impulse * 1000, true);
+	GetMesh()->AddImpulse(Impulse * GetMesh()->GetMass() / 10, FName("pelvis"), true);
+}
+
+void AThirdPersonPlayerCharacter::StopRagdollingBackToAnimation()
+{
+	Super::StopRagdollingBackToAnimation();
 }
 
 void AThirdPersonPlayerCharacter::DeployDrone(const FInputActionInstance& ActionInstance)
@@ -161,12 +187,13 @@ void AThirdPersonPlayerCharacter::Look(const FInputActionInstance& ActionInstanc
 
 void AThirdPersonPlayerCharacter::Move(const FInputActionInstance& ActionInstance)
 {
-	if (!MyPlayerController->InputEnabled()) return;
+	if (!bCanMove || !MyPlayerController->InputEnabled()) return;
 	UCharacterMovementComponent* CharMovement = GetCharacterMovement();
 	if (CharMovement->MovementMode == EMovementMode::MOVE_None) return;
 	MovementDirection = ActionInstance.GetValue().Get<FVector2D>() * GetCurrentMovementSpeed();
-	AddMovementInput(GetActorForwardVector(), MovementDirection.Y);
-	AddMovementInput(GetActorRightVector(), MovementDirection.X);
+	const FRotator ControlRotation = GetControlRotation();
+	AddMovementInput(UKismetMathLibrary::GetRightVector(FRotator(0, ControlRotation.Yaw, ControlRotation.Roll)), MovementDirection.X);
+	AddMovementInput(UKismetMathLibrary::GetForwardVector(FRotator(0, ControlRotation.Yaw, 0)), MovementDirection.Y);
 	PlayerCameraManager->StartCameraShake(WalkingCameraShake);
 	
 }
@@ -178,8 +205,20 @@ void AThirdPersonPlayerCharacter::Evade(const FInputActionInstance& ActionInstan
 		return;
 	}
 	bCanEvade = false;
+	if (!bIsAimingWeapon) {
+		bIsAimingGrenade = false;
+		//StopAimimg();
+		PlayAnimMontage(Evade_FwAnimMontage);
+		FTimerDelegate MyDelegate;
+		MyDelegate.BindLambda([&]() {
+			bCanEvade = true;
+		});
+		GetWorldTimerManager().SetTimer(EvadeTimerHandle, MyDelegate, 0.5f, false);
+		return;
+	}
+	
 	bIsAimingGrenade = false;
-	bIsAimingWeapon = false;
+	//StopAimimg();
 	// ChangePlayerMovement(EMovementMode::MOVE_Flying);
 	// StopAnimMontage(CurrentWeapon->EquipMontage);
 	// StopAnimMontage(CurrentWeapon->UnEquipMontage);
@@ -267,7 +306,7 @@ void AThirdPersonPlayerCharacter::Jump()
 	
 	if (bResult == EClimbType::NORMAL_CLIMB) {
 		FVector Difference = HitResult.ImpactPoint - FeetLocation;
-		FVector Final = GetActorLocation() + Difference - (GetActorForwardVector() * 90);
+		FVector Final = GetActorLocation() + Difference - (GetActorForwardVector() * 90) + (FVector::UpVector * 5);
 		SetActorLocation(Final);
 		PlayAnimMontage(NormalClimbAnimMontage);
 		ResetMovementVelocity(true);
@@ -403,6 +442,11 @@ EClimbType AThirdPersonPlayerCharacter::IsFacingClimbableObject(FHitResult& OutH
 void AThirdPersonPlayerCharacter::Roll()
 {
 	MyPlayerController->DisableInput(MyPlayerController);
+	if (!bIsAimingWeapon) {
+		PlayAnimMontage(Roll_FwAnimMontage);
+		return;
+	}
+	
 	if (MovementDirection.X > 0)
 		PlayAnimMontage(Roll_RAnimMontage);
 	else if (MovementDirection.X < 0)
@@ -411,6 +455,7 @@ void AThirdPersonPlayerCharacter::Roll()
 		PlayAnimMontage(Roll_BwdAnimMontage);
 	else
 		PlayAnimMontage(Roll_FwAnimMontage);
+	
 	/*
 	FTimerDelegate MyDelegate;
 	MyDelegate.BindLambda([&]() {
@@ -423,6 +468,7 @@ void AThirdPersonPlayerCharacter::Roll()
 void AThirdPersonPlayerCharacter::StopAimimg()
 {
 	bIsAimingWeapon = false;
+	bUseControllerRotationYaw = false;
 	SpringArmLengthTarget = SpringArmLengthInital;
 }
 
@@ -441,6 +487,7 @@ void AThirdPersonPlayerCharacter::AimWeapon(const FInputActionInstance& ActionIn
 		return;
 	}
 	// if (GetCurrentMovementSpeed() == SprintSpeed) return;
+	bUseControllerRotationYaw = bValue;
 	bIsAimingWeapon = bValue;
 	SpringArmLengthTarget = (bIsAimingWeapon ? SpringArmLengthAimingMult : 1) * SpringArmLengthInital;
 	if (bIsAimingWeapon)
@@ -469,9 +516,32 @@ void AThirdPersonPlayerCharacter::ShootWeapon(const FInputActionInstance& Action
 	PlayerCameraManager->StartCameraShake(ShootingCameraShake);
 }
 
-void AThirdPersonPlayerCharacter::ClickerClick(const FInputActionInstance& ActionInstance)
+void AThirdPersonPlayerCharacter::SetCanMove(bool InbCanMove)
 {
-	if (!MyPlayerController->InputEnabled()) return;
+	EnableInput(MyPlayerController);
+	// bCanMove = InbCanMove;
+}
+
+void AThirdPersonPlayerCharacter::SpecialStart(const FInputActionInstance& ActionInstance)
+{
+	if (!bCanMove || !MyPlayerController->InputEnabled()) return;
+	UCharacterMovementComponent* CharMovement = GetCharacterMovement();
+	if (CharMovement->MovementMode == EMovementMode::MOVE_None) return;
+	FinishUnequipWeapon();
+	EquipAttachWeaponToHand(false);
+	// TODO: Special Hold as well.
+	SpecialAbilityHandlerComp->SpecialActionStart();
+}
+
+void AThirdPersonPlayerCharacter::SpecialHold(const FInputActionInstance& ActionInstance)
+{
+	if (!bCanMove || !MyPlayerController->InputEnabled()) return;
+	SpecialAbilityHandlerComp->SpecialActionHold();
+}
+
+void AThirdPersonPlayerCharacter::SpecialRelease(const FInputActionInstance& ActionInstance)
+{
+	if (!bCanMove || !MyPlayerController->InputEnabled()) return;
 	UCharacterMovementComponent* CharMovement = GetCharacterMovement();
 	if (CharMovement->MovementMode == EMovementMode::MOVE_None) return;
 }
@@ -487,6 +557,7 @@ void AThirdPersonPlayerCharacter::StartGrenade(const FInputActionInstance& Actio
 
 void AThirdPersonPlayerCharacter::AimGrenade(const FInputActionInstance& ActionInstance)
 {
+	bUseControllerRotationYaw = true;
 	CharacterGrenadeHandlerComp->OngoingGrenadeAim(bIsAimingWeapon);
 }
 
@@ -494,10 +565,12 @@ void AThirdPersonPlayerCharacter::ThrowGrenade(const FInputActionInstance& Actio
 {
 	StopAnimMontage();
 	if (bIsAimingWeapon) {
+		bUseControllerRotationYaw = true;
 		if (GrenadeAimThrowMontage)
 			PlayAnimMontage(GrenadeAimThrowMontage);
 	}
 	else {
+		bUseControllerRotationYaw = false;
 		if (GrenadeThrowMontage)
 			PlayAnimMontage(GrenadeThrowMontage);
 	}
@@ -532,6 +605,7 @@ void AThirdPersonPlayerCharacter::UnequipWeapon()
 }
 
 void AThirdPersonPlayerCharacter::EquipAttachWeaponToHand(bool bEquip) {
+	if (!CurrentWeapon) return;
 	CurrentWeapon->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetIncludingScale, bEquip ? WeaponHandAttachmentSocketName : WeaponAttachmentSocketName);
 }
 
@@ -578,7 +652,7 @@ UAnimationAsset* AThirdPersonPlayerCharacter::GetCurrentAimOffset() const
 	return bIsAimingWeapon ? CurrentWeapon->AIM_AimOffset : CurrentWeapon->HIP_AimOffset;
 }
 
-void AThirdPersonPlayerCharacter::ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bPlayNiagara, bool bSlowDownPlayer)
+void AThirdPersonPlayerCharacter::ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bIsAttached, bool bPlayNiagara, bool bSlowDownPlayer)
 {
 	if (bPlayNiagara)
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SlowMotionNiagaraEffect, Location);

@@ -40,7 +40,7 @@ public:
 	int RootShotAmount = 0;
 
 	UFUNCTION(BlueprintCallable)
-		void ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation);
+		void ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation, bool bForced = false);
 
 	void DisableBloodParticles();
 	// void AttachNiagaraComponentToBone(const FName& BoneName);
@@ -51,6 +51,9 @@ public:
 	void SetBoneTransformOfMesh(const FName& BoneName, const FTransform& Transform);
 	void HideBoneByName(const FName& BoneName);
 	void HideBonesAlreadyHiddenInParent(const USkeletalMeshComponent* Mesh, const FName& BoneName);
+
+	UFUNCTION()
+		void OnLimbDestroyed(AActor* DestroyedActor);
 
 	UFUNCTION()
 		virtual void TakePointDamage(AActor* DamagedActor, float Damage, class AController* InstigatedBy, FVector HitLocation, class UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const class UDamageType* DamageType, AActor* DamageCauser);

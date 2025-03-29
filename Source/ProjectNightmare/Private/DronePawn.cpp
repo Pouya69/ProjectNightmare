@@ -37,20 +37,26 @@ void ADronePawn::BeginPlay()
 void ADronePawn::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	const FVector Start = GetActorLocation();
+	if (PlayerCharacterRef && FVector::Dist(Start, PlayerCharacterRef->GetActorLocation()) > MaxDistanceDroneDestroy) {
+		// TODO: Screen and effects
+		ReturnToPlayer(true);
+		return;
+	}
 	const float MyMass = SkeletalMeshComp->GetMass();
 	const float CargoMass = GetTotalMassOfCargo();
 	// UE_LOG(LogTemp, Warning, TEXT("Self: %f, CARGO: %f"), MyMass, CargoMass);
-	if (CargoMass > MyMass)
+	if (CargoMass > MyMass + MyMass / 2)
 		AddActorWorldOffset(FVector::DownVector * (CargoMass - MyMass) * DroneHeavyMultiplier, true);
 	UPrimitiveComponent* GrabbedComp = PhysicsHandle->GetGrabbedComponent();
 	if (GrabbedComp != nullptr) {
 		FRotator NewRotation = GetActorRotation();
 		NewRotation.Pitch = 0;
-		PhysicsHandle->SetTargetLocationAndRotation(GetActorLocation() - (GetActorUpVector() * (GrabbedComp->GetMass() > SmallItemMass ? 1 : 0.25) * ItemGrabRange), NewRotation);
+		// PhysicsHandle->SetTargetLocationAndRotation(GetActorLocation() - (GetActorUpVector() * (GrabbedComp->GetMass() > SmallItemMass ? 1 : 0.25) * ItemGrabRange), NewRotation);
+		PhysicsHandle->SetTargetLocation(GetActorLocation() - (GetActorUpVector() * (GrabbedComp->GetMass() > SmallItemMass ? 1 : 0.25) * ItemGrabRange));
 		return;
 	}
 	FHitResult HitResult;
-	const FVector Start = GetActorLocation();
 	const FVector End = Start - (GetActorUpVector() * ItemGrabRange);
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
@@ -95,7 +101,7 @@ float ADronePawn::GetTotalMassOfCargo() const
 	QueryParams.AddIgnoredActor(this);
 	if (bHasItemGrabbed)
 		QueryParams.AddIgnoredComponent(PhysicsHandle->GetGrabbedComponent());
-	const bool bIsHit = GetWorld()->SweepMultiByChannel(HitResults, Start, End, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(DroneRadius), QueryParams);
+	const bool bIsHit = GetWorld()->SweepMultiByChannel(HitResults, Start, End, FQuat::Identity, ECC_WorldStatic, FCollisionShape::MakeSphere(DroneRadius/2), QueryParams);
 	if (!bIsHit)
 		return (bHasItemGrabbed ? PhysicsHandle->GetGrabbedComponent()->GetMass() + GetTotalMassOnTopOfHandledCargo() : 0);
 	float TotalMass = bHasItemGrabbed ? GetTotalMassOnTopOfHandledCargo() : 0.f;
@@ -116,20 +122,27 @@ float ADronePawn::GetTotalMassOnTopOfHandledCargo() const {
 	const FVector Start = GrabbedComp->GetCenterOfMass();
 	const FVector BoxSize = box.GetExtent();
 	const FRotator rotation = GrabbedComp->GetComponentRotation();
-	const FVector End = Start + (FVector::UpVector * (5 + BoxSize.Z));
+	const FVector End = Start + (FVector::UpVector * 50);
 	FCollisionQueryParams QueryParams;
 	QueryParams.AddIgnoredActor(this);
 	QueryParams.AddIgnoredComponent(GrabbedComp);
-	// DrawDebugBox(GetWorld(), End, FVector(BoxSize.X + BoxSize.X / 4, BoxSize.Y + BoxSize.Y / 4, 3), FColor::Red);
-	const bool bIsHit = GetWorld()->SweepMultiByChannel(HitResults, Start, End, FQuat(GrabbedComp->GetComponentRotation()), ECC_WorldStatic, FCollisionShape::MakeBox(FVector(BoxSize.X + BoxSize.X / 3, BoxSize.Y + BoxSize.Y / 3, 3)), QueryParams);
+	// DrawDebugBox(GetWorld(), End, FVector(BoxSize.X, BoxSize.Y, 8), FColor::Red);
+	const bool bIsHit = GetWorld()->SweepMultiByChannel(HitResults, Start, End, FQuat(GrabbedComp->GetComponentRotation()), ECC_WorldStatic, FCollisionShape::MakeBox(FVector(BoxSize.X, BoxSize.Y, BoxSize.Z)), QueryParams);
 	if (!bIsHit)
 		return 0.f;
 	float TotalMass = 0.f;
 	for (const FHitResult& HitResult : HitResults) {
-		if (HitResult.GetComponent()->IsSimulatingPhysics())
+		if (HitResult.GetComponent()->IsSimulatingPhysics()) {
 			TotalMass += HitResult.GetComponent()->GetMass();
-		else if (ACharacterBase* CharacterOnTop = Cast<ACharacterBase>(HitResult.GetActor()))
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *HitResult.GetActor()->GetName());
+		}
+			
+		else if (ACharacterBase* CharacterOnTop = Cast<ACharacterBase>(HitResult.GetActor())) {
+			UE_LOG(LogTemp, Warning, TEXT("%s"), *HitResult.GetActor()->GetName());
 			TotalMass += CharacterOnTop->GetCharacterMass();
+		}
+			
+		
 	}
 
 	return TotalMass;
@@ -167,7 +180,7 @@ void ADronePawn::Grab(const FInputActionInstance& ActionInstance)
 		// CurrentComponentInFocusForGrab->SetCollisionResponseToAllChannels(ECR_Ignore);
 		// PhysicsHandle->GrabComponentAtLocation(CurrentComponentInFocusForGrab, FName(""), HitResult.ImpactPoint);
 		// UE_LOG(LogTemp, Warning, TEXT("Grabbed: %d"), HasItemGrabbed() ? 1 : 0);
-		PhysicsHandle->GrabComponentAtLocationWithRotation(CurrentComponentInFocusForGrab, FName("BONE_NAME"), CurrentComponentInFocusForGrab->GetComponentLocation(), CurrentComponentInFocusForGrab->GetComponentRotation());
+		PhysicsHandle->GrabComponentAtLocationWithRotation(CurrentComponentInFocusForGrab, FName("BONE_NAME"), HitResult.ImpactPoint, CurrentComponentInFocusForGrab->GetComponentRotation());
 	
 	}
 }
@@ -199,13 +212,15 @@ void ADronePawn::GoBackToPlayer(const FInputActionInstance& ActionInstance)
 void ADronePawn::ReturnToPlayer(bool bGotDestroyed)
 {
 	APlayerController* PlayerController = GetLocalViewingPlayerController();
-	if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
-	{
-		Subsystem->RemoveMappingContext(DroneMappingContext);
-		Subsystem->AddMappingContext(PlayerCharacterRef->ThirdPersonMappingContext, 0);
+	if (PlayerController) {
+		if (UEnhancedInputLocalPlayerSubsystem* Subsystem = ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+		{
+			Subsystem->RemoveMappingContext(DroneMappingContext);
+			Subsystem->AddMappingContext(PlayerCharacterRef->ThirdPersonMappingContext, 0);
+		}
+		PlayerController->UnPossess();
+		PlayerController->Possess(PlayerCharacterRef);
 	}
-	PlayerController->UnPossess();
-	PlayerController->Possess(PlayerCharacterRef);
 	if (bGotDestroyed) {
 		PlayerCharacterRef->DroneInAir = nullptr;
 		ReleaseGrabbedItem();

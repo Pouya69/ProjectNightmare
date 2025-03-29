@@ -34,7 +34,7 @@ ADismemberedLimb::ADismemberedLimb()
 
 }
 
-void ADismemberedLimb::ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation)
+void ADismemberedLimb::ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation, bool bForced)
 {
 	if (!DismembermentComp) return;
 	DismembermentComp->ApplyDismembermentToLimb(BoneName, Impulse, HitLocation);
@@ -43,7 +43,6 @@ void ADismemberedLimb::ApplyDismembermentToLimb(const FName& BoneName, FVector I
 void ADismemberedLimb::DisableBloodParticles()
 {
 	BloodNiagaraComp->DeactivateImmediate();
-	// BloodNiagaraComp->Deactivate();
 }
 
 //void ADismemberedLimb::AttachNiagaraComponentToBone(const FName& BoneName)
@@ -89,6 +88,14 @@ void ADismemberedLimb::HideBonesAlreadyHiddenInParent(const USkeletalMeshCompone
 	}
 }
 
+void ADismemberedLimb::OnLimbDestroyed(AActor* DestroyedActor)
+{
+	if (DismembermentComp)
+		DismembermentComp->DeleteAllBloodParticles();
+
+	// TODO: Explosion blood effect
+}
+
 void ADismemberedLimb::TakePointDamage(AActor* DamagedActor, float Damage, AController* InstigatedBy, FVector HitLocation, UPrimitiveComponent* FHitComponent, FName BoneName, FVector ShotFromDirection, const UDamageType* DamageType, AActor* DamageCauser)
 {
 	ApplyDismembermentToLimb(BoneName, FVector::ZeroVector, HitLocation);
@@ -103,6 +110,7 @@ void ADismemberedLimb::TakeRadialDamage(AActor* DamagedActor, float Damage, cons
 void ADismemberedLimb::BeginPlay()
 {
 	Super::BeginPlay();
+	OnDestroyed.AddDynamic(this, &ADismemberedLimb::OnLimbDestroyed);
 	OnTakePointDamage.AddDynamic(this, &ADismemberedLimb::TakePointDamage);
 	OnTakeRadialDamage.AddDynamic(this, &ADismemberedLimb::TakeRadialDamage);
 }

@@ -80,6 +80,8 @@ public:
 		float DamageToCharactersHit = 2.f;
 	UPROPERTY(EditAnywhere)
 		float DroneHeavyMultiplier = 0.1f;
+	UPROPERTY(EditAnywhere)
+		float MaxDistanceDroneDestroy = 2000.f;
 
 	class UPhysicsHandleComponent* PhysicsHandle;
 	UFUNCTION(BlueprintCallable)

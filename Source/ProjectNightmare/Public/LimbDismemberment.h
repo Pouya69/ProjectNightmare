@@ -42,7 +42,10 @@ protected:
 
 public:	
 	UFUNCTION(BlueprintCallable, Category = "Dismemberment")
-		void ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation);
+		bool ApplyDismembermentToLimb(const FName& BoneName, const FVector& Impulse, const FVector& HitLocation, bool bForced = false);
+
+	UPROPERTY(EditAnywhere, Category = "Dismemberment")
+		int OneInNumChanceDismemberment = 5;
 
 	UPROPERTY(EditAnywhere, Category = "Dismemberment")
 		UDataTable* LimbsDataTable;

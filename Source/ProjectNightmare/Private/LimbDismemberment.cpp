@@ -32,17 +32,21 @@ void ULimbDismemberment::BeginPlay()
 		OwnerIndividualLimb = Cast<ADismemberedLimb>(GetOwner());
 		Mesh = OwnerIndividualLimb->SkeletalMesh;
 	}
-		
-
 	
 }
 
-void ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation)
+bool ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, const FVector& Impulse, const FVector& HitLocation, bool bForced)
 {
 	if (BoneName.IsNone()) {
 		UE_LOG(LogTemp, Error, TEXT("LIMB NAME INVALID FOR CHECK. BONE CHECKED: %s"), *BoneName.ToString());
-		return;
+		return false;
 	}
+	if (!bForced && FMath::RandRange(1, OneInNumChanceDismemberment) != 1)
+		return false;
+
+
+	if (OwmerCharacter && OwmerCharacter->bIsMarkedForDeath)
+		OwmerCharacter->Die();
 
 	// For when we are shooting the individual bone
 	if (OwnerIndividualLimb && BoneName.IsEqual(OwnerIndividualLimb->LimbRoot)) {
@@ -50,27 +54,96 @@ void ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, FVector
 		if (OwnerIndividualLimb->RootShotAmount > OwnerIndividualLimb->RootLimbMaxShotThreshold) {
 			OwnerIndividualLimb->HideBoneByName(BoneName);
 			OwnerIndividualLimb->DisableBloodParticles();
+
 		}
-		return;
+		return true;
 	}
 
-	if (Mesh->BoneIsChildOf(BoneName, Pelvis) && !Mesh->BoneIsChildOf(BoneName, LeftClavicle) && !Mesh->BoneIsChildOf(BoneName, RightClavicle)) {
+	const FTransform LimbTransform = Mesh->GetBoneTransform(BoneName);
+	const FTransform RootTransform = Mesh->GetBoneTransform(FName("root"));
+	const bool bIsUpperBodyHit = BoneName.IsEqual(Pelvis) || BoneName.IsEqual(Spine1) || BoneName.IsEqual(Spine2) || BoneName.IsEqual(Spine3) || BoneName.IsEqual(Spine1);
+	// Separating body parts
+	if (BoneName.IsEqual(RightThigh) || BoneName.IsEqual(RightCalf) || BoneName.IsEqual(RightFoot))
+		bIsLeftLegGone = true;
+	else if (BoneName.IsEqual(LeftThigh) || BoneName.IsEqual(LeftCalf) || BoneName.IsEqual(LeftFoot))
+		bIsRightLegGone = true;
+	if (OwmerCharacter && OwmerCharacter->IsAlive() && !OwmerCharacter->bIsCrawling && (bIsRightLegGone || bIsLeftLegGone || bIsUpperBodyHit)) {
+		OwmerCharacter->StopAnimMontage();
+		// OwmerCharacter->StopMyMovement();
+		// UE_LOG(LogTemp, Warning, TEXT("Separate"));
 		// When shooting upperbody and we are separating the upperbody from lowerbody
-		if (OwmerCharacter) {
 			// Mesh->SetSkeletalMesh();
-			DeleteAllBloodParticles();
-		}
-	}
+		DeleteAllBloodParticles();
+		if (bIsLeftLegGone || bIsRightLegGone) {
+			// OwmerCharacter->StopMyMovement();
+			ADismemberedLimb* SpawnedLimb = SpawnLimbByBoneName(BoneName, RootTransform, LimbTransform, true);
 
+			if (!SpawnedLimb) return false;
+			Mesh->HideBoneByName(BoneName, EPhysBodyOp::PBO_Term);
+			// TODO: Blood effects
+			SpawnedLimb->EnablePhysics(true);
+			SpawnedLimb->SkeletalMesh->AddImpulse(Impulse * DismembermentForce);
+			UNiagaraComponent* SpawnedNiagara = UNiagaraFunctionLibrary::SpawnSystemAttached(BloodNiagara, Mesh, BoneName, LimbTransform.GetTranslation(), LimbTransform.GetRotation().Rotator(), EAttachLocation::KeepWorldPosition, true);
+
+		}
+		else if (!bIsLeftLegGone && !bIsRightLegGone) {
+			const FTransform RightLegTransform = Mesh->GetBoneTransform(RightThigh);
+			const FTransform LeftLegTransform = Mesh->GetBoneTransform(LeftThigh);
+			ADismemberedLimb* RightLegSpawned = SpawnLimbByBoneName(RightThigh, RootTransform, RightLegTransform, false);
+			RightLegSpawned->DismembermentComp->bIsHeadGone = bIsHeadGone;
+			RightLegSpawned->DismembermentComp->bIsBodyDetachedFromPelvis = bIsBodyDetachedFromPelvis;
+			RightLegSpawned->DismembermentComp->bIsRightArmGone = bIsRightArmGone;
+			RightLegSpawned->DismembermentComp->bIsLeftArmGone = bIsLeftArmGone;
+			RightLegSpawned->DismembermentComp->bIsRightLegGone = bIsRightLegGone;
+			RightLegSpawned->DismembermentComp->bIsLeftLegGone = bIsLeftLegGone;
+			RightLegSpawned->EnablePhysics(true);
+
+			ADismemberedLimb* LeftLegSpawned = SpawnLimbByBoneName(LeftThigh, RootTransform, LeftLegTransform, false);
+			
+			LeftLegSpawned->DismembermentComp->bIsBodyDetachedFromPelvis = bIsBodyDetachedFromPelvis;
+			LeftLegSpawned->DismembermentComp->bIsRightArmGone = bIsRightArmGone;
+			LeftLegSpawned->DismembermentComp->bIsLeftArmGone = bIsLeftArmGone;
+			LeftLegSpawned->DismembermentComp->bIsRightLegGone = bIsRightLegGone;
+			LeftLegSpawned->DismembermentComp->bIsLeftLegGone = bIsLeftLegGone;
+			LeftLegSpawned->EnablePhysics(true);
+
+			UNiagaraFunctionLibrary::SpawnSystemAttached(BloodNiagara, Mesh, RightThigh, RightLegTransform.GetTranslation(), RightLegTransform.GetRotation().Rotator(), EAttachLocation::KeepWorldPosition, true);
+			UNiagaraFunctionLibrary::SpawnSystemAttached(BloodNiagara, Mesh, LeftThigh, LeftLegTransform.GetTranslation(), LeftLegTransform.GetRotation().Rotator(), EAttachLocation::KeepWorldPosition, true);
+			
+			Mesh->HideBoneByName(RightThigh, EPhysBodyOp::PBO_None);
+			Mesh->HideBoneByName(LeftThigh, EPhysBodyOp::PBO_None);
+			bIsRightLegGone = true;
+			bIsLeftLegGone = true;
+		}
+
+		/*if (bIsRightLegGone) {
+			
+		}
+			
+		if (bIsLeftLegGone) {
+			
+		}*/
+		
+		
+
+		// Mesh->SetSimulatePhysics(true);
+		OwmerCharacter->StartCrawling();
+		bShouldPlayDismembermentAnimations = false;
+
+		// Mesh->AddImpulse(Impulse, Pelvis);
+		return true;
+	}
+	if (bIsUpperBodyHit && OwmerCharacter->bIsCrawling) {
+		return true;
+	}
 
 	// Mesh->SetBodySimulatePhysics(*LimbName, true);
-	FTransform LimbTransform = Mesh->GetBoneTransform(BoneName);
-	FTransform RootTransform = Mesh->GetBoneTransform(FName("root"));
+	
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *LimbTransform.ToString());
 	
 	ADismemberedLimb* SpawnedLimb = SpawnLimbByBoneName(BoneName, RootTransform, LimbTransform, true);
 
-	if (!SpawnedLimb) return;
+	if (!SpawnedLimb) return false;
 	Mesh->HideBoneByName(BoneName, EPhysBodyOp::PBO_None);
 	// TODO: Blood effects
 	SpawnedLimb->EnablePhysics(true);
@@ -85,14 +158,13 @@ void ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, FVector
 			SpawnedParticles.Add(SpawnedNiagara);
 		}
 	}
-	
 
-	if (!OwmerCharacter || !OwmerCharacter->IsAlive()) return;
+	if (!OwmerCharacter || !OwmerCharacter->IsAlive()) return true;
 	// Play dismemberment animation
 
 	UAnimMontage* AnimMontageToPlay = nullptr;
 
-	if (Mesh->BoneIsChildOf(BoneName, LeftClavicle)) {
+	if (Mesh->BoneIsChildOf(BoneName, LeftClavicle) || BoneName.IsEqual(LeftHand) || BoneName.IsEqual(LeftLowerArm)) {
 		// LeftArm;
 		bIsLeftArmGone = true;
 		if (bIsRightArmGone) {
@@ -100,8 +172,10 @@ void ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, FVector
 		}
 		else
 			AnimMontageToPlay = LeftArmDismembermentAnim;
+		if (!OwmerCharacter->bIsCrawling)
+			OwmerCharacter->StopMyMovement();
 	}
-	else if (Mesh->BoneIsChildOf(BoneName, LeftThigh) || BoneName.IsEqual(LeftThigh)) {
+	/*else if (BoneName.IsEqual(LeftThigh) || BoneName.IsEqual(LeftCalf) || BoneName.IsEqual(LeftFoot)) {
 		// LeftLeg;
 		bIsLeftLegGone = true;
 		if (bIsRightLegGone) {
@@ -110,8 +184,8 @@ void ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, FVector
 		}
 		else
 			AnimMontageToPlay = LeftLegDismembermentAnim;
-	}
-	else if (Mesh->BoneIsChildOf(BoneName, RightClavicle)) {
+	}*/
+	else if (Mesh->BoneIsChildOf(BoneName, RightClavicle) || BoneName.IsEqual(RightHand) || BoneName.IsEqual(RightLowerArm)) {
 		// RightArm;
 		bIsRightArmGone = true;
 		if (bIsLeftArmGone) {
@@ -119,16 +193,19 @@ void ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, FVector
 		}
 		else
 			AnimMontageToPlay = RightArmDismembermentAnim;
+		if (!OwmerCharacter->bIsCrawling)
+			OwmerCharacter->StopMyMovement();
 	}
-	else if (Mesh->BoneIsChildOf(BoneName, RightThigh) || BoneName.IsEqual(RightThigh)) {
+	/*else if (BoneName.IsEqual(RightThigh) || BoneName.IsEqual(RightCalf) || BoneName.IsEqual(RightFoot)) {
 		// RightLeg;
 		bIsRightLegGone = true;
 		if (bIsLeftLegGone) {
-			// Mesh->SetSimulatePhysics(true);
+			DeleteAllBloodParticles();
+			Mesh->SetSimulatePhysics(true);
 		}
 		else
 			AnimMontageToPlay = RightLegDismembermentAnim;
-	}
+	}*/
 	else if (Mesh->BoneIsChildOf(BoneName, Neck) || BoneName.IsEqual(Head) || BoneName.IsEqual(Neck)) {
 		// HEAD;
 		bIsHeadGone = true;
@@ -156,6 +233,8 @@ void ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, FVector
 	if (bShouldPlayDismembermentAnimations && AnimMontageToPlay)
 		Mesh->GetAnimInstance()->Montage_Play(AnimMontageToPlay);
 
+	return true;
+
 }
 
 ADismemberedLimb* ULimbDismemberment::SpawnLimbByBoneName(const FName& LimbName, const FTransform& RootTransform, const FTransform& LimbTransform, bool bWasShot)
@@ -166,7 +245,7 @@ ADismemberedLimb* ULimbDismemberment::SpawnLimbByBoneName(const FName& LimbName,
 		UE_LOG(LogTemp, Error, TEXT("LIMB NAME INVALID FOR LIMB SPAWN: %s"), *LimbName.ToString());
 		return nullptr;
 	}
-	ADismemberedLimb* SpawnedLimb = GetWorld()->SpawnActorDeferred<ADismemberedLimb>(DismemberedLimbClass, RootTransform);
+	ADismemberedLimb* SpawnedLimb = GetWorld()->SpawnActorDeferred<ADismemberedLimb>(DismemberedLimbClass, RootTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (!SpawnedLimb) return nullptr;
 	SpawnedLimb->SetMesh(LimbStruct->LimbSkeletalMesh);
 	if (bWasShot)
@@ -175,6 +254,7 @@ ADismemberedLimb* ULimbDismemberment::SpawnLimbByBoneName(const FName& LimbName,
 	SpawnedLimb->HideBonesAlreadyHiddenInParent(Mesh, LimbName);
 	// SpawnedLimb->SetBoneTransformOfMesh(LimbName, LimbTransform);
 	// SpawnedLimb->AttachNiagaraComponentToBone(LimbName);
+	SpawnedLimb->SkeletalMesh->SetMaterial(0, Mesh->GetMaterial(0));
 	SpawnedLimb->SetBloodNiagaraWorldTransform(LimbTransform);
 	SpawnedLimb->FinishSpawning(RootTransform);
 	return SpawnedLimb;
@@ -186,7 +266,10 @@ void ULimbDismemberment::DeleteAllBloodParticles()
 		for (int i = 0; i < SpawnedParticles.Num(); i++) {
 			UNiagaraComponent* Particle = SpawnedParticles[i];
 			SpawnedParticles.RemoveAt(i);
+			Particle->DeactivateImmediate();
 			Particle->DestroyComponent();
 		}
 	}
+	if (OwnerIndividualLimb)
+		OwnerIndividualLimb->DisableBloodParticles();
 }

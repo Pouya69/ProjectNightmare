@@ -69,6 +69,7 @@ bool AWeapon::Shoot(const FVector& StartLocation, const FVector& EndLocation)
 	if (!HitResult.BoneName.IsNone())
 		const bool bWasCriticalHit = GetDamageMultiplierBoneHit(HitResult.BoneName, FinalDamage);
 	// UE_LOG(LogTemp, Warning, TEXT("HIT %s"), *HitResult.GetActor()->GetName());
+
 	UGameplayStatics::ApplyPointDamage(HitResult.GetActor(), FinalDamage, EndLocation - StartLocation, HitResult, GetInstigatorController(), GetOwner(), WeaponDamageType);
 	//if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(HitResult.GetActor())) {
 		

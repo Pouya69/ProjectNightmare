@@ -52,6 +52,11 @@ void AGrenade::Tick(float DeltaTime)
 
 }
 
+void AGrenade::AddImpulseToGrenade(const FVector& Amount)
+{
+	ProjectileMovementComponent->AddForce(Amount * 80);
+}
+
 void AGrenade::SetSpeed(float Speed)
 {
 	ProjectileMovementComponent->InitialSpeed = Speed;

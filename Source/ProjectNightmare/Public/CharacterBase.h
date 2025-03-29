@@ -59,13 +59,87 @@ public:
 	UFUNCTION(BlueprintCallable)
 		float GetCapsuleHalfHeight() const;
 
+	bool bIsMarkedForDeath;
+
+public:
+	// Ragdoll
+	bool bIsMarkedForGettingUp;
+	FTimerHandle RagdollStopTimer;
+	void UpdateRagdollState();
+	FVector PelvisOffset;
+	void InitPhysicsSetup();
+	UPROPERTY(EditAnywhere, Category = "Ragdoll")
+		float StopRagdollingAfterVelocity = 10.f;
+	UPROPERTY(EditAnywhere, Category = "Ragdoll")
+		float StopRagdollingAfterSeconds = 2.f;
+	UPROPERTY(EditAnywhere, Category="Ragdoll")
+		bool bShouldRagdollInGravityAreas = true;
+	UPROPERTY(BlueprintReadOnly, Category = "Ragdoll")
+		bool bIsRagdolling;
+	UPROPERTY(BlueprintReadOnly, Category = "Ragdoll")
+		bool bShouldGetUpFromFront_ANIMATION_ONLY;
+
+	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
+		virtual void StartRagdolling();
+	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
+		virtual void StopRagdollingBackToAnimation();
+	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
+		virtual void StopRagdollingBackToAnimation_FROM_TIMER();
+	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
+		virtual void StandingEventDone();
+	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
+		bool ShouldGetUpFromFront() const;
+	UFUNCTION()
+		void AfterSnapShot();
+	UFUNCTION()
+		void TakeSnapShot();
+
+	virtual void AddImpulseToCharacter(const FVector& Impulse);
 public:
 	// Dismemberment
 
 	class ULimbDismemberment* DismembermentComp;
 
 	UFUNCTION(BlueprintCallable)
-		void ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation);
+		void ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation, bool bForced = false);
+
+	UFUNCTION()
+		void OnDestroyedDeath(AActor* DestroyedActor);
+
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Dismemberment")
+		bool bIsCrawling;
+	UPROPERTY(EditAnywhere, Category = "Dismemberment")
+		float StartCrawlAfterRagdollInSeconds = 1.f;
+	UPROPERTY(EditAnywhere, Category = "Dismemberment")
+		float CrawlingMovementSpeed = 60.f;
+	UFUNCTION()
+		virtual void StartCrawling();
+
+	FTimerHandle CrawlingTimer;
+
+public:
+	// Epic Effect
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
+		class UNiagaraSystem* SlowMotionNiagaraEffect;
+	UFUNCTION(BlueprintCallable, Category = "Combat")
+		virtual void ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bIsAttached = false, bool bPlayNiagara = true, bool bSlowDownPlayer = true);
+	FTimerHandle EpicEffectTimerHandle;
+	virtual void StopMyMovement();
+public:
+	// Texture Paint
+	UPROPERTY(EditAnywhere, Category = "Texture Paint")
+		float BloodSplatterOnBulletHit = 25.f;
+	UPROPERTY(EditAnywhere, Category="Texture Paint")
+		class USceneCaptureComponent2D* SceneCaptureComp;
+
+	UPROPERTY(EditAnywhere, Category = "Texture Paint")
+		class UMaterialInterface* UnwrapMaterial;
+
+	void PaintBlood(const FVector& ImpactPoint, const float Radius);
+
+	class UTextureRenderTarget2D* Damage_RT;
+	class UMaterialInterface* OldMaterial;
+	// class UMaterialInstanceDynamic* OldMaterial;
 
 private:
 	float Health;

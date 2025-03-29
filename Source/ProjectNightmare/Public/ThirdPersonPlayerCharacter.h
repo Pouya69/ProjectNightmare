@@ -57,6 +57,11 @@ private:
 	FTimerHandle DroneCooldownTimerHandle;
 
 public:
+	// Ragdolling
+	virtual void StartRagdolling() override;
+	virtual void StopRagdollingBackToAnimation() override;
+	virtual void AddImpulseToCharacter(const FVector& Impulse) override;
+public:
 	// Drone
 	UPROPERTY(EditAnywhere, Category = "Drone")
 		int DroneRocketsLeft = 4;
@@ -119,7 +124,7 @@ public:
 	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
 		class UInputAction* ShootAction;
 	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
-		class UInputAction* ClickerAction;
+		class UInputAction* SpecialAction;
 	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
 		class UInputAction* ReloadAction;
 	UPROPERTY(EditAnywhere, Category = "EnhancedInput")
@@ -193,8 +198,6 @@ public:
 	UFUNCTION(Category = "Combat")
 		void ShootWeapon(const FInputActionInstance& ActionInstance);
 	UFUNCTION(Category = "Combat")
-		void ClickerClick(const FInputActionInstance& ActionInstance);
-	UFUNCTION(Category = "Combat")
 		void Reload(const FInputActionInstance& ActionInstance);
 	UPROPERTY(EditAnywhere, Category="Combat")
 		TSubclassOf<UCameraShakeBase> ShootingCameraShake;
@@ -219,11 +222,24 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 		class UAnimationAsset* GetCurrentAimOffset() const;
 
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
-		class UNiagaraSystem* SlowMotionNiagaraEffect;
-	UFUNCTION(BlueprintCallable, Category = "Combat")
-		void ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bPlayNiagara = true, bool bSlowDownPlayer = true);
-		
+	UFUNCTION(BlueprintCallable)
+		void SetCanMove(bool bCanMove);
+
+	bool bCanMove = true;
+
+	virtual void ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bIsAttached = false, bool bPlayNiagara = true, bool bSlowDownPlayer = true) override;
+	
+public:
+	// Abilities
+	UPROPERTY(BlueprintReadOnly)
+		class USpecialAbilityHandlerComponent* SpecialAbilityHandlerComp;
+	UFUNCTION(Category = "Combat")
+		void SpecialStart(const FInputActionInstance& ActionInstance);
+	UFUNCTION(Category = "Combat")
+		void SpecialHold(const FInputActionInstance& ActionInstance);
+	UFUNCTION(Category = "Combat")
+		void SpecialRelease(const FInputActionInstance& ActionInstance);
+
 public:
 	// Interaction
 	UPROPERTY(EditAnywhere)

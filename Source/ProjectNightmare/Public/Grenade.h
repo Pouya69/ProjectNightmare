@@ -40,6 +40,8 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Movement")
 		USceneComponent* RootComp;
 
+	void AddImpulseToGrenade(const FVector& Amount);
+
 	UPROPERTY(EditAnywhere)
 		class UNiagaraSystem* ExplosionNiagara;
 	void SetSpeed(float Speed);
