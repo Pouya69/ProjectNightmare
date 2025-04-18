@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Animation/SkeletalMeshActor.h"
+#include "InteractableObject.h"
 #include "Weapon.generated.h"
 
 /**
@@ -11,7 +11,7 @@
  */
 
 UCLASS()
-class PROJECTNIGHTMARE_API AWeapon : public ASkeletalMeshActor
+class PROJECTNIGHTMARE_API AWeapon : public AInteractableObject
 {
 	GENERATED_BODY()
 	
@@ -27,12 +27,30 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	// If <= 0, it is a singleshot weapon. In Miliseconds
+
+
+	UPROPERTY(EditAnywhere)
+		float FireRate = -1;
+	bool bIsFiring = false;
+	float CurrentFireRatePoint = 0.f;
+
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		FName WeaponName;
+
+	UPROPERTY(EditAnywhere)
+		USkeletalMeshComponent* Mesh;
+
+	UFUNCTION(BlueprintCallable)
+		FORCEINLINE USkeletalMeshComponent* GetMesh() { return Mesh; }
+	
+	virtual void SetFocusMaterial(bool bIsFocused) override;
+	virtual void InteractionComplete(class AThirdPersonPlayerCharacter* PlayerCharacterRef) override;
+	void PickedUpWeapon();
+	void DroppedWeapon();
 public:
 	// Animation
-	UPROPERTY(EditAnywhere)
-		class UWeaponAnimInstance* WeaponAnimInstance;
+	class UWeaponAnimInstance* WeaponAnimInstance;
 	UPROPERTY(EditAnywhere)
 		UAnimMontage* ReloadMontage;
 	UPROPERTY(EditAnywhere)

@@ -3,6 +3,7 @@
 
 #include "SpecialAbilityHandlerComponent.h"
 #include "ThirdPersonPlayerCharacter.h"
+#include "Kismet/GameplayStatics.h"
 
 // Sets default values for this component's properties
 USpecialAbilityHandlerComponent::USpecialAbilityHandlerComponent()
@@ -20,6 +21,7 @@ void USpecialAbilityHandlerComponent::BeginPlay()
 {
 	Super::BeginPlay();
 	PlayerCharacterRef = Cast<AThirdPersonPlayerCharacter>(GetOwner());
+	CurrentAbility = ESpecialAbilityType::FREEZE_TIME;
 	// ...
 	
 }
@@ -55,12 +57,29 @@ void USpecialAbilityHandlerComponent::Launch()
 	// PlayerCharacterRef->EnableInput(PlayerCharacterRef->MyPlayerController);
 }
 
+void USpecialAbilityHandlerComponent::FreezeTime()
+{
+	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 0.00001f);
+	FTimerDelegate MyDelegate;
+	PlayerCharacterRef->CustomTimeDilation = 1 / 0.0001f;
+	PlayerCharacterRef->PlayerCameraManager->CustomTimeDilation = 1 / 0.0001f;
+	MyDelegate.BindLambda([&]() {
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.f);
+		PlayerCharacterRef->CustomTimeDilation = 1.f;
+		PlayerCharacterRef->PlayerCameraManager->CustomTimeDilation = 1.f;
+	});
+	PlayerCharacterRef->GetWorldTimerManager().SetTimer(FreezeTimeTimerHandle, MyDelegate, FreezeTimeAmount * 0.0001f, false);
+}
+
 UAnimMontage* USpecialAbilityHandlerComponent::GetAnimMontageBasedOnCurrentAbility()
 {
 	switch (CurrentAbility)
 	{
 	case ESpecialAbilityType::LAUNCH:
 		return LaunchMontage;
+		break;
+	case ESpecialAbilityType::FREEZE_TIME:
+		return FreezeTimeMontage;
 		break;
 	default:
 		break;

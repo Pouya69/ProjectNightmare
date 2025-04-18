@@ -24,6 +24,8 @@ ACharacterBase::ACharacterBase()
 	SceneCaptureComp->bCaptureEveryFrame = false;
 	SceneCaptureComp->bCaptureOnMovement = false;
 	SceneCaptureComp->SetupAttachment(GetRootComponent());
+	GetMesh()->SetCollisionResponseToChannel(ECC_Visibility, ECR_Block);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Camera, ECR_Ignore);
 }
 
 // Called when the game starts or when spawned
@@ -110,6 +112,7 @@ void ACharacterBase::Die()
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	// GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
 	DisableInput(GetLocalViewingPlayerController());
+	GetMesh()->SetBodySimulatePhysics(FName("root"), true);
 	GetMesh()->SetSimulatePhysics(true);
 	OnDeath.Broadcast();
 	
@@ -147,7 +150,7 @@ void ACharacterBase::UpdateRagdollState()
 	const FVector TargetGroundLocation = bResult ? HitResult.ImpactPoint : PelvisLocation;
 	GetCapsuleComponent()->SetWorldLocation(TargetGroundLocation - PelvisOffset);
 
-	if (bResult && PelvisLocation.Z - TargetGroundLocation.Z < 20.f && !GetCharacterMovement()->IsFalling() && GetVelocity().Length() <= StopRagdollingAfterVelocity) {
+	if (bIsRagdolling && bResult && PelvisLocation.Z - TargetGroundLocation.Z < 20.f && !GetCharacterMovement()->IsFalling() && GetVelocity().Length() <= StopRagdollingAfterVelocity) {
 		FTimerDelegate MyDelegate;
 		MyDelegate.BindLambda([&]() {
 			if (bIsMarkedForGettingUp) {

@@ -6,19 +6,67 @@
 #include "WeaponAnimInstance.h"
 #include "Kismet/GameplayStatics.h"
 #include "Animation/AimOffsetBlendSpace.h"
+#include "ThirdPersonPlayerCharacter.h"
 
 AWeapon::AWeapon()
 {
+	PrimaryActorTick.bCanEverTick = true;
+	Mesh = CreateDefaultSubobject<USkeletalMeshComponent>(FName("Mesh"));
+	Mesh->SetupAttachment(GetRootComponent());
 }
 
 void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
+	CurrentFireRatePoint = 100.f;
+	if (Mesh->GetAnimInstance() != nullptr)
+		WeaponAnimInstance = Cast<UWeaponAnimInstance>(Mesh->GetAnimInstance());
+
 }
 
 void AWeapon::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+	if (!bIsFiring) return;
+	CurrentFireRatePoint = FMath::FInterpConstantTo(CurrentFireRatePoint, 100.f, DeltaTime, FireRate);
+	UE_LOG(LogTemp, Warning, TEXT("%f"), CurrentFireRatePoint);
+	if (CurrentFireRatePoint >= 110.f) {
+		FTimerDelegate Delegate;
+		Delegate.BindLambda([&]() {
+			CurrentFireRatePoint = 0;
+		});
+		GetWorldTimerManager().SetTimerForNextTick(Delegate);
+	}
+}
+
+void AWeapon::SetFocusMaterial(bool bIsFocused)
+{
+	Mesh->SetOverlayMaterial(bIsFocused ? FocusedMaterial : nullptr);
+}
+
+void AWeapon::InteractionComplete(AThirdPersonPlayerCharacter* PlayerCharacterRef)
+{
+	PlayerCharacterRef->PickupWeapon(this);
+}
+
+void AWeapon::PickedUpWeapon()
+{
+	bIsInteractable = false;
+	Mesh->SetGenerateOverlapEvents(false);
+	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Ignore);
+	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECR_Ignore);
+	Mesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	SetInRange(false);
+}
+
+void AWeapon::DroppedWeapon()
+{
+	bIsInteractable = true;
+	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Overlap);
+	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECR_Block);
+	Mesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	Mesh->SetGenerateOverlapEvents(true);
+	SetInRange(false);
 }
 
 bool AWeapon::GetDamageMultiplierBoneHit(const FName& BoneName, float& Damage) const
@@ -47,15 +95,13 @@ bool AWeapon::Reload()
 
 bool AWeapon::Shoot(const FVector& StartLocation, const FVector& EndLocation)
 {
-	if (bIsReloadingWeapon) return false;
+	if (bIsReloadingWeapon || CurrentFireRatePoint < 100.f) return false;
 	if (CurrentBulletsLeft <= 0) {
 		// TODO: Make sound of empty gun
 		return false;
 	}
 	CurrentBulletsLeft -= 1;
-	if (WeaponAnimInstance)
-		WeaponAnimInstance->Shoot(SelfShootMontage);
-	const FVector MuzzleLocation = GetSkeletalMeshComponent()->GetSocketLocation(FName("Muzzle"));
+	const FVector MuzzleLocation = Mesh->GetSocketLocation(FName("Muzzle"));
 	// TODO: spawn muzzle etc.
 	FHitResult HitResult;
 	FCollisionQueryParams Params;
@@ -68,9 +114,9 @@ bool AWeapon::Shoot(const FVector& StartLocation, const FVector& EndLocation)
 	float FinalDamage = BaseDamage;
 	if (!HitResult.BoneName.IsNone())
 		const bool bWasCriticalHit = GetDamageMultiplierBoneHit(HitResult.BoneName, FinalDamage);
-	// UE_LOG(LogTemp, Warning, TEXT("HIT %s"), *HitResult.GetActor()->GetName());
 
 	UGameplayStatics::ApplyPointDamage(HitResult.GetActor(), FinalDamage, EndLocation - StartLocation, HitResult, GetInstigatorController(), GetOwner(), WeaponDamageType);
+	CurrentFireRatePoint = 0;
 	//if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(HitResult.GetActor())) {
 		
 		//CharacterHit->HitByWeapon(HitResult.ImpactPoint, HitResult.ImpactNormal, BaseDamage);

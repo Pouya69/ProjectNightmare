@@ -58,6 +58,7 @@ void ADismemberedLimb::SetBloodNiagaraWorldTransform(const FTransform Transform)
 
 void ADismemberedLimb::EnablePhysics(bool bEnable)
 {
+	SkeletalMesh->SetAllBodiesSimulatePhysics(true);
 	SkeletalMesh->SetSimulatePhysics(bEnable);
 }
 
@@ -113,4 +114,5 @@ void ADismemberedLimb::BeginPlay()
 	OnDestroyed.AddDynamic(this, &ADismemberedLimb::OnLimbDestroyed);
 	OnTakePointDamage.AddDynamic(this, &ADismemberedLimb::TakePointDamage);
 	OnTakeRadialDamage.AddDynamic(this, &ADismemberedLimb::TakeRadialDamage);
+	SkeletalMesh->SetAllBodiesSimulatePhysics(true);
 }

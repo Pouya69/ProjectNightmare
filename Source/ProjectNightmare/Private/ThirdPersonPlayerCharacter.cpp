@@ -21,9 +21,15 @@
 #include "CharacterGrenadeHandler.h"
 #include "SpecialAbilityHandlerComponent.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "InteractableObject.h"
+#include "InventoryComponent.h"
+#include "Camera/CameraModifier_CameraShake.h"
 
 AThirdPersonPlayerCharacter::AThirdPersonPlayerCharacter()
 {
+	InteractOverlapComp = CreateDefaultSubobject<UBoxComponent>(FName("Interaction Box Area"));
+	InteractOverlapComp->SetupAttachment(GetRootComponent());
+	InventoryComponent = CreateDefaultSubobject<UInventoryComponent>(FName("Inventory Comp"));
 }
 
 void AThirdPersonPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
@@ -42,7 +48,11 @@ void AThirdPersonPlayerCharacter::SetupPlayerInputComponent(UInputComponent* Pla
 	PlayerEnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Look);
 	PlayerEnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Jump);
 	PlayerEnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::AimWeapon);
+
+	PlayerEnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Started, this, &AThirdPersonPlayerCharacter::StartShootWeapon);
 	PlayerEnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::ShootWeapon);
+	PlayerEnhancedInputComponent->BindAction(ShootAction, ETriggerEvent::Completed, this, &AThirdPersonPlayerCharacter::StopShootWeapon);
+
 	PlayerEnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Sprint);
 	PlayerEnhancedInputComponent->BindAction(ReloadAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Reload);
 	PlayerEnhancedInputComponent->BindAction(EvadeAction, ETriggerEvent::Triggered, this, &AThirdPersonPlayerCharacter::Evade);
@@ -81,12 +91,16 @@ void AThirdPersonPlayerCharacter::BeginPlay()
 	PlayerCameraManager = MyPlayerController->PlayerCameraManager;
 	PlayerCutsceneHandler = FindComponentByClass<UPlayerCutsceneHandlerComponent>();
 	WidgetsOnScreen.Empty();
+
+	InteractOverlapComp->OnComponentBeginOverlap.AddDynamic(this, &AThirdPersonPlayerCharacter::InteractionRangeOverlap);
+	InteractOverlapComp->OnComponentEndOverlap.AddDynamic(this, &AThirdPersonPlayerCharacter::InteractionRangeEndOverlap);
 }
 
 void AThirdPersonPlayerCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 	SpringArmComp->TargetArmLength = FMath::FInterpTo(SpringArmComp->TargetArmLength, SpringArmLengthTarget, DeltaTime, SpringArmLengthTransitionRate);
+	HandleInteract(DeltaTime);
 }
 
 void AThirdPersonPlayerCharacter::Die()
@@ -249,6 +263,13 @@ void AThirdPersonPlayerCharacter::Interact(const FInputActionInstance& ActionIns
 {
 	if (!MyPlayerController->InputEnabled()) return;
 	// TODO: Check for normal interaction
+	const bool bIsInteracting = ActionInstance.GetValue().Get<bool>();
+	if (bIsInteracting) {
+		if (!InteractingObject) return;
+		InteractingObject->StartInteraction();
+		return;
+	}
+	StopInteract();
 
 	const bool bResult = WarpHandlerComponent->SwapLocation();
 }
@@ -315,7 +336,7 @@ void AThirdPersonPlayerCharacter::Jump()
 	else if (bResult == EClimbType::LEDGE_CLIMB) {
 		ResetMovementVelocity(true);
 		FVector Difference = HitResult.ImpactPoint - GetActorLocation();
-		FVector Final = GetActorLocation() + Difference - (GetActorUpVector() * 70) - (GetActorForwardVector() * 30);
+		FVector Final = GetActorLocation() + Difference - (GetActorUpVector() * 68) - (GetActorForwardVector() * 30);
 		CharMovement->SetMovementMode(EMovementMode::MOVE_Flying);
 		GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		MyPlayerController->DisableInput(MyPlayerController);
@@ -399,7 +420,7 @@ EClimbType AThirdPersonPlayerCharacter::IsFacingClimbableObject(FHitResult& OutH
 		}
 		FVector StartA = SecondHitResult.ImpactPoint;
 		FHitResult PrevHitResult = SecondHitResult;
-		for (int i = 0; i < Start.Z; i+=2)
+		for (int i = 0; i < Start.Z; i+=1)
 		{
 			StartA.Z += i;
 			PrevHitResult = SecondHitResult;
@@ -409,7 +430,7 @@ EClimbType AThirdPersonPlayerCharacter::IsFacingClimbableObject(FHitResult& OutH
 				StartA,
 				FQuat::Identity,
 				ECollisionChannel::ECC_WorldStatic,
-				FCollisionShape::MakeSphere(2), CollisionParams);
+				FCollisionShape::MakeSphere(1), CollisionParams);
 			if (!bIsHit) break;
 		}
 		// Ledge Climb
@@ -494,6 +515,17 @@ void AThirdPersonPlayerCharacter::AimWeapon(const FInputActionInstance& ActionIn
 		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 }
 
+void AThirdPersonPlayerCharacter::StartShootWeapon(const FInputActionInstance& ActionInstance)
+{
+	if (!MyPlayerController->InputEnabled() || CurrentWeapon == nullptr) return;
+	bIsAimingGrenade = false;
+	if (!bHasWeaponEquipped) return;
+	UCharacterMovementComponent* CharMovement = GetCharacterMovement();
+	if (CharMovement->MovementMode == EMovementMode::MOVE_None) return;
+	if (!bIsAimingWeapon && CurrentWeapon->bShouldAimToShoot) return;
+	CurrentWeapon->bIsFiring = true;
+}
+
 void AThirdPersonPlayerCharacter::ShootWeapon(const FInputActionInstance& ActionInstance)
 {
 	if (!MyPlayerController->InputEnabled() || CurrentWeapon == nullptr) return;
@@ -508,12 +540,22 @@ void AThirdPersonPlayerCharacter::ShootWeapon(const FInputActionInstance& Action
 	MyPlayerController->GetPlayerViewPoint(Start, Rotation);
 	FVector End = Start + (CameraComp->GetForwardVector() * 10000.f);
 	if (!CurrentWeapon->Shoot(Start, End)) return;
+	// FVector ControlRotation = End - Start;
+	bUseControllerRotationYaw = true;
+	if (!bIsAimingWeapon)
+		GetWorldTimerManager().SetTimerForNextTick(this, &AThirdPersonPlayerCharacter::StopAimimg);
 	if (CurrentWeapon->ShootMontage) {
 		// UE_LOG(LogTemp, Warning);
 		PlayAnimMontage(CurrentWeapon->ShootMontage);
 	}
 	if (!ShootingCameraShake) return;
 	PlayerCameraManager->StartCameraShake(ShootingCameraShake);
+}
+
+void AThirdPersonPlayerCharacter::StopShootWeapon(const FInputActionInstance& ActionInstance)
+{
+	CurrentWeapon->bIsFiring = false;
+	CurrentWeapon->CurrentFireRatePoint = 100.f;
 }
 
 void AThirdPersonPlayerCharacter::SetCanMove(bool InbCanMove)
@@ -656,21 +698,26 @@ void AThirdPersonPlayerCharacter::ApplyEpicEffect(float TimeDilationAmount, FVec
 {
 	if (bPlayNiagara)
 		UNiagaraFunctionLibrary::SpawnSystemAtLocation(GetWorld(), SlowMotionNiagaraEffect, Location);
-	UGameplayStatics::SetGlobalTimeDilation(GetWorld(), TimeDilationAmount);
-	FTimerDelegate MyDelegate;
-	if (!bSlowDownPlayer) {
-		CustomTimeDilation = 1 / TimeDilationAmount;
-		MyDelegate.BindLambda([&]() {
-			UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.f);
-			CustomTimeDilation = 1.f;
-		});
+	const float PreviousDilation = UGameplayStatics::GetGlobalTimeDilation(GetWorld());
+	if (PreviousDilation > TimeDilationAmount) {
+		UGameplayStatics::SetGlobalTimeDilation(GetWorld(), TimeDilationAmount);
+		FTimerDelegate MyDelegate;
+		if (!bSlowDownPlayer) {
+			CustomTimeDilation = 1 / TimeDilationAmount;
+			PlayerCameraManager->CustomTimeDilation = CustomTimeDilation;
+			MyDelegate.BindLambda([&]() {
+				UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.f);
+				CustomTimeDilation = 1.f;
+				PlayerCameraManager->CustomTimeDilation = 1;
+			});
+		}
+		else {
+			MyDelegate.BindLambda([&]() {
+				UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.f);
+			});
+		}
+		GetWorldTimerManager().SetTimer(EpicEffectTimerHandle, MyDelegate, Duration, false);
 	}
-	else {
-		MyDelegate.BindLambda([&]() {
-			UGameplayStatics::SetGlobalTimeDilation(GetWorld(), 1.f);
-		});
-	}
-	GetWorldTimerManager().SetTimer(EpicEffectTimerHandle, MyDelegate, Duration, false);
 }
 
 void AThirdPersonPlayerCharacter::PickupWeapon(AWeapon* WeaponToPickup)
@@ -678,12 +725,105 @@ void AThirdPersonPlayerCharacter::PickupWeapon(AWeapon* WeaponToPickup)
 	WeaponToPickup->SetOwner(this);
 	WeaponToPickup->SetInstigator(this);
 	CurrentWeapon = WeaponToPickup;
+	WeaponToPickup->PickedUpWeapon();
+	InventoryComponent->AddItemToInventory(WeaponToPickup);
 }
 
 void AThirdPersonPlayerCharacter::DropWeapon(AWeapon* WeaponToDrop) {
+	InventoryComponent->DropItem(WeaponToDrop);
 	WeaponToDrop->SetOwner(nullptr);
 	WeaponToDrop->SetInstigator(nullptr);
+	WeaponToDrop->DroppedWeapon();
 	if (CurrentWeapon == WeaponToDrop) CurrentWeapon = nullptr;  // TODO: For other weapons (multiple weapons -> equip the next weapon instead).
+}
+
+void AThirdPersonPlayerCharacter::StopInteract()
+{
+	if (!InteractingObject) return;
+	InteractingObject->StopInteraction();
+	InteractingObject = nullptr;
+}
+
+void AThirdPersonPlayerCharacter::InteractionRangeOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndexbool, bool bFromSweep, const FHitResult& SweepResult)
+{
+	if (AInteractableObject* Interactable = Cast<AInteractableObject>(OtherActor)) {
+		Interactable->SetInRange(true);
+	}
+	
+}
+
+void AThirdPersonPlayerCharacter::InteractionRangeEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndexbool)
+{
+	if (AInteractableObject* Interactable = Cast<AInteractableObject>(OtherActor)) {
+		Interactable->SetInRange(false);
+		Interactable->SetIsFocused(false);
+		Interactable->StopInteraction();
+		if (Interactable == InteractingObject) InteractingObject = nullptr;
+	}
+}
+
+AInteractableObject* AThirdPersonPlayerCharacter::GetClosestInteractable() const
+{
+	TArray<AActor*> Overlaps;
+	InteractOverlapComp->GetOverlappingActors(Overlaps, AInteractableObject::StaticClass());
+	if (Overlaps.IsEmpty()) return nullptr;
+	AInteractableObject* ClosestInteractable = Cast<AInteractableObject>(Overlaps[0]);
+	float SmallestDistance = 8000.f;
+	const FVector PlayerLocation = GetActorLocation();
+	for (int i = 0; i < Overlaps.Num(); i++) {
+		AInteractableObject* Interactable = Cast<AInteractableObject>(Overlaps[i]);
+		if (!Interactable || IsInteractableBlocked(Interactable) || !Interactable->bIsInteractable) continue;
+		const float NewDistance = FVector::Dist(PlayerLocation, Interactable->GetActorLocation());
+		if (NewDistance < SmallestDistance) {
+			ClosestInteractable = Interactable;
+			SmallestDistance = NewDistance;
+		}
+	}
+	return SmallestDistance > InteractDistance ? nullptr : ClosestInteractable;
+}
+
+bool AThirdPersonPlayerCharacter::IsInteractableBlocked(AInteractableObject* Interactable) const
+{
+	FHitResult HitResult;
+	const FVector Start = GetActorLocation();
+	const FVector End = Interactable->GetActorLocation();
+	FCollisionQueryParams CParams;
+	if (CurrentWeapon)
+		CParams.AddIgnoredActor(CurrentWeapon);
+	if (GetWorld()->LineTraceSingleByChannel(HitResult, Start, End, ECollisionChannel::ECC_Visibility, CParams)) {
+		AActor* HitResultActor = HitResult.GetActor();
+		if (HitResultActor == nullptr || HitResultActor == Interactable) return false;
+		return true;
+	}
+	return false;
+}
+
+bool AThirdPersonPlayerCharacter::IsInteracting() const
+{
+	if (!InteractingObject) return false;
+	return InteractingObject->bIsInteracting;
+}
+
+void AThirdPersonPlayerCharacter::HandleInteract(float DeltaTime)
+{
+	AInteractableObject* ClosestInteractable = GetClosestInteractable();
+	if (!ClosestInteractable && InteractingObject != nullptr) {
+		InteractingObject->SetIsFocused(false);
+		InteractingObject->StopInteraction();
+		InteractingObject = nullptr;
+		return;
+	}
+	if (ClosestInteractable != InteractingObject) {
+		if (InteractingObject) {
+			InteractingObject->SetIsFocused(false);
+			InteractingObject->StopInteraction();
+		}
+		InteractingObject = ClosestInteractable;
+		InteractingObject->SetIsFocused(true);
+	}
+	if (InteractingObject != nullptr) {
+		InteractingObject->HoldInteract(this, DeltaTime);
+	}
 }
 
 void AThirdPersonPlayerCharacter::SetCutsceneController(ACutsceneController* NewCutsceneController)

@@ -10,6 +10,7 @@
 UENUM(Blueprintable)
 enum class ESpecialAbilityType : uint8 {
 	LAUNCH,
+	FREEZE_TIME,
 };
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -43,7 +44,17 @@ public:
 		void Launch();
 
 public:
+	// Freeze Time
+	FTimerHandle FreezeTimeTimerHandle;
+	UPROPERTY(EditAnywhere, Category="Freeze Time")
+		float FreezeTimeAmount = 5.f;
+	UFUNCTION(BlueprintCallable, Category = "Abilities")
+		void FreezeTime();
+
+public:
 	// Animations
 	UPROPERTY(EditAnywhere, Category = "Animation Montages")
 		UAnimMontage* LaunchMontage;
+	UPROPERTY(EditAnywhere, Category = "Animation Montages")
+		UAnimMontage* FreezeTimeMontage;
 };

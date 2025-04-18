@@ -131,6 +131,10 @@ public:
 		class UInputAction* DroneDeployAction;
 
 public:
+	// Inventory
+	UPROPERTY(EditAnywhere)
+		class UInventoryComponent* InventoryComponent;
+public:
 	// Movement
 	FVector2D MovementDirection;
 	UPROPERTY(EditAnywhere, Category = "Movement")
@@ -196,7 +200,11 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Combat")
 		bool HasWeaponOnBody() const { return CurrentWeapon != nullptr; }
 	UFUNCTION(Category = "Combat")
+		void StartShootWeapon(const FInputActionInstance& ActionInstance);
+	UFUNCTION(Category = "Combat")
 		void ShootWeapon(const FInputActionInstance& ActionInstance);
+	UFUNCTION(Category = "Combat")
+		void StopShootWeapon(const FInputActionInstance& ActionInstance);
 	UFUNCTION(Category = "Combat")
 		void Reload(const FInputActionInstance& ActionInstance);
 	UPROPERTY(EditAnywhere, Category="Combat")
@@ -243,7 +251,7 @@ public:
 public:
 	// Interaction
 	UPROPERTY(EditAnywhere)
-		class UBoxComponent* InteractionBoxComp;
+		class UBoxComponent* InteractOverlapComp;
 	UFUNCTION()
 		void Interact(const FInputActionInstance& ActionInstance);
 	UFUNCTION(BlueprintCallable)
@@ -256,6 +264,22 @@ public:
 		FName WeaponHandAttachmentSocketName;
 	UPROPERTY(EditAnywhere)
 		FName PistolAttachmentSocketName;
+	UPROPERTY(EditAnywhere)
+		float InteractDistance = 100.f;
+
+	void StopInteract();
+	UFUNCTION()
+		void InteractionRangeOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndexbool, bool bFromSweep, const FHitResult& SweepResult);
+	UFUNCTION()
+		void InteractionRangeEndOverlap(UPrimitiveComponent* OverlappedComponent, AActor* OtherActor, UPrimitiveComponent* OtherComp, int32 OtherBodyIndexbool);
+	class AInteractableObject* GetClosestInteractable() const;
+	bool IsInteractableBlocked(class AInteractableObject* Interactable) const;
+
+	UFUNCTION(BlueprintCallable)
+		bool IsInteracting() const;
+	class AInteractableObject* InteractingObject;
+	void HandleInteract(float DeltaTime);
+
 	
 
 public:

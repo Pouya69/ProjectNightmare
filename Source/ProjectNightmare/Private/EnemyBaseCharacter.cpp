@@ -7,7 +7,7 @@
 
 AEnemyBaseCharacter::AEnemyBaseCharacter()
 {
-	
+	AutoPossessAI = EAutoPossessAI::PlacedInWorldOrSpawned;
 }
 
 void AEnemyBaseCharacter::BeginPlay()
@@ -19,6 +19,21 @@ void AEnemyBaseCharacter::BeginPlay()
 void AEnemyBaseCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
+}
+
+void AEnemyBaseCharacter::EnemySpawned()
+{
+	// EnemyAIController->GetBrainComponent()->StopLogic(FString());
+	// StopMyMovement();
+	
+	if (JustSpawnedAnim)
+		PlayAnimMontage(JustSpawnedAnim);
+}
+
+void AEnemyBaseCharacter::SpawnFinished()
+{
+	EnemyAIController->bSpawned = true;
+	EnemyAIController->RunBehaviorTree(EnemyAIController->EnemyBehaviour);
 }
 
 void AEnemyBaseCharacter::AttackPlayer()
@@ -51,7 +66,7 @@ void AEnemyBaseCharacter::TakeRadialDamage(AActor* DamagedActor, float Damage, c
 
 void AEnemyBaseCharacter::StopMyMovement()
 {
-	if (!EnemyAIController) return;
+	if (!EnemyAIController || !EnemyAIController->bSpawned) return;
 	EnemyAIController->StopMovement();
 	EnemyAIController->MoveToLocation(GetActorLocation());
 	EnemyAIController->GetBlackboardComponent()->SetValueAsBool(FName("ShouldRunAI"), false);
@@ -65,5 +80,6 @@ void AEnemyBaseCharacter::StopMyMovement()
 
 void AEnemyBaseCharacter::AllowAIMovement()
 {
+	if (!EnemyAIController || !EnemyAIController->bSpawned) return;
 	EnemyAIController->GetBlackboardComponent()->SetValueAsBool(FName("ShouldRunAI"), true);
 }

@@ -90,7 +90,8 @@ void ACutsceneController::FinishedCutscene(FTransform NewPlayerTransform, bool b
 	PlayerCharacterRef = nullptr;
 
 	if (bShouldDestroyAtEnd) {
-		OtherCharacterInCutscene->Destroy();
+		if (OtherCharacterInCutscene)
+			OtherCharacterInCutscene->Destroy();
 	}
 	else {
 		SetActorTickEnabled(false);

@@ -25,6 +25,8 @@ public:
 
 public:
 	// Perception and AI
+	UPROPERTY(EditAnywhere)
+		bool bSpawned = false;
 	UPROPERTY(EditAnywhere, Category = "Perception and AI")
 		class UBehaviorTree* EnemyBehaviour;
 	UPROPERTY(EditAnywhere, Category = "Perception and AI | KEYS")

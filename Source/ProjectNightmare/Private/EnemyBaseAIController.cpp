@@ -14,7 +14,7 @@ AEnemyBaseAIController::AEnemyBaseAIController()
 void AEnemyBaseAIController::BeginPlay()
 {
 	Super::BeginPlay();
-	if (EnemyBehaviour) {
+	if (bSpawned && EnemyBehaviour) {
 		RunBehaviorTree(EnemyBehaviour);
 	}
 	AIPerceptionComp = FindComponentByClass<UAIPerceptionComponent>();
@@ -33,6 +33,7 @@ void AEnemyBaseAIController::Tick(float DeltaTime)
 
 void AEnemyBaseAIController::OnPerceptionInfoUpdated(AActor* Actor, FAIStimulus Stimulus)
 {
+	if (!bSpawned) return;
 	// UE_LOG(LogTemp, Warning, TEXT("%s"), *Stimulus.Type.Name.ToString());
 	if (Stimulus.Type.Name.IsEqual(FName("Default__AISense_Sight"))) {
 		HandleSense_Sight(Actor, Stimulus);
@@ -41,15 +42,17 @@ void AEnemyBaseAIController::OnPerceptionInfoUpdated(AActor* Actor, FAIStimulus 
 
 void AEnemyBaseAIController::OnPerceptionInfoForgotten(AActor* Actor)
 {
+	if (!bSpawned) return;
 	UE_LOG(LogTemp, Warning, TEXT("FORGOTTEN PLAYERREF"));
 	UObject* PlayerObject = Blackboard->GetValueAsObject(PlayerCharacterRefNameKEY);
 	if (PlayerObject == nullptr || Actor != PlayerObject) return;
 	Blackboard->ClearValue(PlayerCharacterRefNameKEY);
-	Blackboard->SetValueAsInt(TimeSinceSeenPlayerKEY, 0);
+	// Blackboard->SetValueAsInt(TimeSinceSeenPlayerKEY, 0);
 }
 
 void AEnemyBaseAIController::HandleSense_Sight(AActor* Actor, FAIStimulus& Stimulus)
 {
+	if (!bSpawned) return;
 	if (AThirdPersonPlayerCharacter* PlayerCharacter = Cast<AThirdPersonPlayerCharacter>(Actor)) {
 		Blackboard->SetValueAsBool(FName("HasSeenPlayer"), true);
 		if (Stimulus.WasSuccessfullySensed()) {

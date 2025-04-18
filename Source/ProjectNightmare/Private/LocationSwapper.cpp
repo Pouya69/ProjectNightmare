@@ -30,7 +30,8 @@ void ALocationSwapper::Tick(float DeltaTime)
 	if (!HasPatrolPath()) return;
 	const FVector MyLocation = GetActorLocation();
 	const FVector TargetLocation = PatrolPath[CurrentPatrolPathIndex]->GetActorLocation();
-	AddActorWorldOffset((TargetLocation - MyLocation).GetUnsafeNormal() * PatrolSpeed);
+	// GetRootComponent()->ComponentVelocity += (TargetLocation - MyLocation).GetUnsafeNormal() * PatrolSpeed;
+	AddActorWorldOffset((TargetLocation - MyLocation).GetUnsafeNormal() * PatrolSpeed * GetActorTimeDilation());
 	if (FVector::Dist(MyLocation, TargetLocation) <= 10.f) {
 		CurrentPatrolPathIndex = (CurrentPatrolPathIndex + 1) > (PatrolPath.Num() - 1) ? 0 : CurrentPatrolPathIndex + 1;
 	}

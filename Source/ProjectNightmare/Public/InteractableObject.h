@@ -18,16 +18,36 @@ public:
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
+	virtual void SetFocusMaterial(bool bIsFocused);
 
-public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
-	void Interact(int Value);
-
+public:
 	UPROPERTY(EditAnywhere)
 		int CurrentValue = 0;
 
-	void Interact(class AThirdPersonPlayerCharacter* PlayerCharacterRef);
+	void Interact(int Value);
+	void HoldInteract(class AThirdPersonPlayerCharacter* PlayerCharacterRef, const float DeltaTime);
 
+	UPROPERTY(EditAnywhere)
+		class UWidgetComponent* InteractUserWidgetComp;
+	class UInteractionWidget* InteractionWidget;
+	UPROPERTY(EditAnywhere)
+		class USceneComponent* RootSceneComp;
+	UStaticMeshComponent* StaticMeshComp;
+
+public:
+	UPROPERTY(EditAnywhere)
+		class UMaterialInstance* FocusedMaterial;
+	bool bIsInteractable = true;
+	void SetInRange(bool bInRange);
+	void SetIsFocused(bool bIsFocused);
+	void StartInteraction();
+	void StopInteraction();
+	virtual void InteractionComplete(class AThirdPersonPlayerCharacter* PlayerCharacterRef);
+	virtual void InteractionComplete();
+	bool bIsInteracting;
+	UPROPERTY(EditAnywhere)
+		float InteractionRate = 50.f;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
+		float InteractionPercent;
 };

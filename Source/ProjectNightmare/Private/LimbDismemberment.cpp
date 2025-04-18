@@ -60,7 +60,7 @@ bool ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, const F
 	}
 
 	const FTransform LimbTransform = Mesh->GetBoneTransform(BoneName);
-	const FTransform RootTransform = Mesh->GetBoneTransform(FName("root"));
+	const FTransform RootTransform = Mesh->IsSimulatingPhysics() ? Mesh->GetBoneTransform(FName("pelvis")) : Mesh->GetBoneTransform(FName("root"));
 	const bool bIsUpperBodyHit = BoneName.IsEqual(Pelvis) || BoneName.IsEqual(Spine1) || BoneName.IsEqual(Spine2) || BoneName.IsEqual(Spine3) || BoneName.IsEqual(Spine1);
 	// Separating body parts
 	if (BoneName.IsEqual(RightThigh) || BoneName.IsEqual(RightCalf) || BoneName.IsEqual(RightFoot))
@@ -77,7 +77,6 @@ bool ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, const F
 		if (bIsLeftLegGone || bIsRightLegGone) {
 			// OwmerCharacter->StopMyMovement();
 			ADismemberedLimb* SpawnedLimb = SpawnLimbByBoneName(BoneName, RootTransform, LimbTransform, true);
-
 			if (!SpawnedLimb) return false;
 			Mesh->HideBoneByName(BoneName, EPhysBodyOp::PBO_Term);
 			// TODO: Blood effects
@@ -107,11 +106,14 @@ bool ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, const F
 			LeftLegSpawned->DismembermentComp->bIsLeftLegGone = bIsLeftLegGone;
 			LeftLegSpawned->EnablePhysics(true);
 
+			LeftLegSpawned->SkeletalMesh->SetBodySimulatePhysics(FName("root"), true);
+			RightLegSpawned->SkeletalMesh->SetBodySimulatePhysics(FName("root"), true);
+
 			UNiagaraFunctionLibrary::SpawnSystemAttached(BloodNiagara, Mesh, RightThigh, RightLegTransform.GetTranslation(), RightLegTransform.GetRotation().Rotator(), EAttachLocation::KeepWorldPosition, true);
 			UNiagaraFunctionLibrary::SpawnSystemAttached(BloodNiagara, Mesh, LeftThigh, LeftLegTransform.GetTranslation(), LeftLegTransform.GetRotation().Rotator(), EAttachLocation::KeepWorldPosition, true);
 			
-			Mesh->HideBoneByName(RightThigh, EPhysBodyOp::PBO_None);
-			Mesh->HideBoneByName(LeftThigh, EPhysBodyOp::PBO_None);
+			Mesh->HideBoneByName(RightThigh, EPhysBodyOp::PBO_Term);
+			Mesh->HideBoneByName(LeftThigh, EPhysBodyOp::PBO_Term);
 			bIsRightLegGone = true;
 			bIsLeftLegGone = true;
 		}
@@ -133,7 +135,7 @@ bool ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, const F
 		// Mesh->AddImpulse(Impulse, Pelvis);
 		return true;
 	}
-	if (bIsUpperBodyHit && OwmerCharacter->bIsCrawling) {
+	if (OwmerCharacter && bIsUpperBodyHit && OwmerCharacter->bIsCrawling) {
 		return true;
 	}
 
@@ -144,8 +146,9 @@ bool ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, const F
 	ADismemberedLimb* SpawnedLimb = SpawnLimbByBoneName(BoneName, RootTransform, LimbTransform, true);
 
 	if (!SpawnedLimb) return false;
-	Mesh->HideBoneByName(BoneName, EPhysBodyOp::PBO_None);
+	Mesh->HideBoneByName(BoneName, EPhysBodyOp::PBO_Term);
 	// TODO: Blood effects
+	SpawnedLimb->SkeletalMesh->SetBodySimulatePhysics(FName("root"), true);
 	SpawnedLimb->EnablePhysics(true);
 	SpawnedLimb->SkeletalMesh->AddImpulse(Impulse * DismembermentForce);
 
@@ -245,7 +248,7 @@ ADismemberedLimb* ULimbDismemberment::SpawnLimbByBoneName(const FName& LimbName,
 		UE_LOG(LogTemp, Error, TEXT("LIMB NAME INVALID FOR LIMB SPAWN: %s"), *LimbName.ToString());
 		return nullptr;
 	}
-	ADismemberedLimb* SpawnedLimb = GetWorld()->SpawnActorDeferred<ADismemberedLimb>(DismemberedLimbClass, RootTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
+	ADismemberedLimb* SpawnedLimb = GetWorld()->SpawnActorDeferred<ADismemberedLimb>(DismemberedLimbClass, OwmerCharacter != nullptr ? RootTransform : LimbTransform, nullptr, nullptr, ESpawnActorCollisionHandlingMethod::AlwaysSpawn);
 	if (!SpawnedLimb) return nullptr;
 	SpawnedLimb->SetMesh(LimbStruct->LimbSkeletalMesh);
 	if (bWasShot)
@@ -256,7 +259,7 @@ ADismemberedLimb* ULimbDismemberment::SpawnLimbByBoneName(const FName& LimbName,
 	// SpawnedLimb->AttachNiagaraComponentToBone(LimbName);
 	SpawnedLimb->SkeletalMesh->SetMaterial(0, Mesh->GetMaterial(0));
 	SpawnedLimb->SetBloodNiagaraWorldTransform(LimbTransform);
-	SpawnedLimb->FinishSpawning(RootTransform);
+	SpawnedLimb->FinishSpawning(OwmerCharacter != nullptr ? RootTransform : LimbTransform);
 	return SpawnedLimb;
 }
 

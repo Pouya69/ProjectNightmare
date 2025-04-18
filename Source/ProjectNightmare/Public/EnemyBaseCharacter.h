@@ -25,6 +25,13 @@ protected:
 public:
 	virtual void Tick(float DeltaTime) override;
 
+	UPROPERTY(EditAnywhere, Category="Spawn")
+		UAnimMontage* JustSpawnedAnim;
+	UFUNCTION(BlueprintCallable, Category = "Spawn")
+		void EnemySpawned();
+	UFUNCTION(BlueprintCallable, Category = "Spawn")
+		void SpawnFinished();
+
 	UPROPERTY(BlueprintReadOnly)
 		class AEnemyBaseAIController* EnemyAIController;
 
