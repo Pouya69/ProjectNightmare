@@ -1,10 +1,10 @@
 # Assets
 Content/*
-!Content/Blueprints/*
-!Content/Animations/*
+# !Content/Blueprints/*
+# !Content/Animations/*
 # !Content/BSP_Locomotion/*
-!Content/Levels/*
-!Content/ThirdPerson/*
+# !Content/Levels/*
+# !Content/ThirdPerson/*
 
 # Visual Studio 2015 user specific files
 .vs/
