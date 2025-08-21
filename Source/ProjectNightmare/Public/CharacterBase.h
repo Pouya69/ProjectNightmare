@@ -58,6 +58,10 @@ public:
 		float GetCapsuleRadius() const;
 	UFUNCTION(BlueprintCallable)
 		float GetCapsuleHalfHeight() const;
+	UFUNCTION(BlueprintCallable)
+		FVector GetCharacterVelocity() const;
+	UFUNCTION(BlueprintCallable)
+		void SetCharacterVelocity(const FVector NewVelocity) const;
 
 	bool bIsMarkedForDeath;
 
@@ -65,7 +69,7 @@ public:
 	// Ragdoll
 	bool bIsMarkedForGettingUp;
 	FTimerHandle RagdollStopTimer;
-	void UpdateRagdollState();
+	virtual void UpdateRagdollState();
 	FVector PelvisOffset;
 	void InitPhysicsSetup();
 	UPROPERTY(EditAnywhere, Category = "Ragdoll")
@@ -81,6 +85,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
 		virtual void StartRagdolling();
+	FVector GetPelvisLocation() const;
 	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
 		virtual void StopRagdollingBackToAnimation();
 	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
@@ -90,11 +95,46 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Ragdoll")
 		bool ShouldGetUpFromFront() const;
 	UFUNCTION()
-		void AfterSnapShot();
+		virtual void AfterSnapShot();
 	UFUNCTION()
 		void TakeSnapShot();
 
 	virtual void AddImpulseToCharacter(const FVector& Impulse);
+
+public:
+	// Death and falling.
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* DeathMontage_Front;
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* DeathMontage_Back;
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* FallMontage_Front;
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* FallMontage_Back;
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* ReactHitMontage_Front;
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* ReactHitMontage_Back;
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* ReactHitMontage_Left;
+	UPROPERTY(EditAnywhere, Category = "Death")
+		UAnimMontage* ReactHitMontage_Right;
+	// If we are hit, only play front or else just play the additive.
+	UPROPERTY(EditAnywhere, Category = "Death")
+		bool bShouldOnlyPlayFrontHit = false;
+
+	UPROPERTY(EditAnywhere, Category = "Death | Additive")
+		UAnimMontage* ReactHitMontageAdditive_Front;
+	UPROPERTY(EditAnywhere, Category = "Death | Additive")
+		UAnimMontage* ReactHitMontageAdditive_Back;
+	UPROPERTY(EditAnywhere, Category = "Death | Additive")
+		UAnimMontage* ReactHitMontageAdditive_Left;
+	UPROPERTY(EditAnywhere, Category = "Death | Additive")
+		UAnimMontage* ReactHitMontageAdditive_Right;
+	// Plays the hit animation based on angle of direction hit.
+	UFUNCTION(BlueprintCallable, Category="Death | Additive")
+		void PlayHitReactionMontage(const float SignedAngle);
+
 public:
 	// Dismemberment
 
@@ -115,6 +155,8 @@ public:
 	UFUNCTION()
 		virtual void StartCrawling();
 
+	float GetMovementSpeed(EMovementMode InMovementMode) const;
+
 	FTimerHandle CrawlingTimer;
 
 public:
@@ -122,7 +164,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Combat")
 		class UNiagaraSystem* SlowMotionNiagaraEffect;
 	UFUNCTION(BlueprintCallable, Category = "Combat")
-		virtual void ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bIsAttached = false, bool bPlayNiagara = true, bool bSlowDownPlayer = true);
+		virtual void ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bIsAttached = false, bool bPlayNiagara = true, bool bSlowDownPlayer = true, float PlayerSlowdownCustomRate = 1.f);
 	FTimerHandle EpicEffectTimerHandle;
 	virtual void StopMyMovement();
 public:

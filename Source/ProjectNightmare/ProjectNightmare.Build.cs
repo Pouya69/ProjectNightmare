@@ -10,7 +10,7 @@ public class ProjectNightmare : ModuleRules
 	{
 		PCHUsage = PCHUsageMode.UseExplicitOrSharedPCHs;
 	
-		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "LevelSequence", "MovieScene", "MovieSceneTracks", "UMG", "GameplayTasks", "NavigationSystem", "Niagara" });
+		PublicDependencyModuleNames.AddRange(new string[] { "Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "LevelSequence", "MovieScene", "MovieSceneTracks", "UMG", "GameplayTasks", "NavigationSystem", "Niagara", "MotionWarping" });
 
 		PrivateDependencyModuleNames.AddRange(new string[] {  });
 

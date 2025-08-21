@@ -52,20 +52,21 @@ bool AEnemySpawner::SpawnEnemyWithType(EEnemyType EnemyType)
 			return false;	
 			break;
 		case EEnemyType::NORMAL:
-			SpawnedEnemy = GetWorld()->SpawnActor<AEnemyBaseCharacter>(NormalEnemyClass, SpawnLocationComp->GetComponentTransform());
+			SpawnedEnemy = GetWorld()->SpawnActorDeferred<AEnemyBaseCharacter>(NormalEnemyClass, SpawnLocationComp->GetComponentTransform());
 			break;
 		case EEnemyType::FAST:
-			SpawnedEnemy = GetWorld()->SpawnActor<AEnemyBaseCharacter>(FastEnemyClass, SpawnLocationComp->GetComponentTransform());
+			SpawnedEnemy = GetWorld()->SpawnActorDeferred<AEnemyBaseCharacter>(FastEnemyClass, SpawnLocationComp->GetComponentTransform());
 			break;
 		case EEnemyType::SPITTER:
-			SpawnedEnemy = GetWorld()->SpawnActor<AEnemyBaseCharacter>(SpitterEnemyClass, SpawnLocationComp->GetComponentTransform());
+			SpawnedEnemy = GetWorld()->SpawnActorDeferred<AEnemyBaseCharacter>(SpitterEnemyClass, SpawnLocationComp->GetComponentTransform());
 			break;
 		default:
 			break;
 	}
 	if (!SpawnedEnemy) return false;
+
 	SpawnedEnemy->EnemySpawned();
-	// SpawnedEnemy->FinishSpawning(SpawnLocationComp->GetComponentTransform());
+	SpawnedEnemy->FinishSpawning(SpawnLocationComp->GetComponentTransform());
 	EnemySpawnedSuccessfully();
 	return true;
 }

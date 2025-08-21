@@ -24,6 +24,7 @@ public:
 	virtual void Tick(float DeltaTime) override;
 
 public:
+	class AEnemyBaseCharacter* EnemyOwner;
 	// Perception and AI
 	UPROPERTY(EditAnywhere)
 		bool bSpawned = false;
@@ -41,5 +42,7 @@ public:
 	UFUNCTION()
 		void OnPerceptionInfoForgotten(AActor* Actor);
 	void HandleSense_Sight(AActor* Actor, struct FAIStimulus& Stimulus);
+	void EnemyDied();
+	const AActor* SoftPlayerRef_READONLY;
 	
 };

@@ -42,12 +42,15 @@ public:
 	void SetIsFocused(bool bIsFocused);
 	void StartInteraction();
 	void StopInteraction();
-	virtual void InteractionComplete(class AThirdPersonPlayerCharacter* PlayerCharacterRef);
+	UFUNCTION(BlueprintCallable)
+		virtual void InteractionComplete(class AThirdPersonPlayerCharacter* PlayerCharacterRef);
 	virtual void InteractionComplete();
+	UFUNCTION(BlueprintNativeEvent)
+		void InteractionComplete_Finished_Event(class AThirdPersonPlayerCharacter* PlayerCharacterRef);
+	void InteractionComplete_Finished_Event_Implementation(class AThirdPersonPlayerCharacter* PlayerCharacterRef);
 	bool bIsInteracting;
 	UPROPERTY(EditAnywhere)
 		float InteractionRate = 50.f;
-
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		float InteractionPercent;
 };

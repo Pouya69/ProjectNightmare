@@ -14,7 +14,8 @@ UENUM(Blueprintable)
 enum class EValueType : uint8 {
 	BOOL,
 	FLOAT,
-	INT
+	INT,
+	VECTOR,
 };
 
 UCLASS()

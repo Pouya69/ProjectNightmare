@@ -19,6 +19,7 @@ void AWeapon::BeginPlay()
 {
 	Super::BeginPlay();
 	CurrentFireRatePoint = 100.f;
+	if (IsDefaultWeapon) return;
 	if (Mesh->GetAnimInstance() != nullptr)
 		WeaponAnimInstance = Cast<UWeaponAnimInstance>(Mesh->GetAnimInstance());
 
@@ -29,14 +30,7 @@ void AWeapon::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	if (!bIsFiring) return;
 	CurrentFireRatePoint = FMath::FInterpConstantTo(CurrentFireRatePoint, 100.f, DeltaTime, FireRate);
-	UE_LOG(LogTemp, Warning, TEXT("%f"), CurrentFireRatePoint);
-	if (CurrentFireRatePoint >= 110.f) {
-		FTimerDelegate Delegate;
-		Delegate.BindLambda([&]() {
-			CurrentFireRatePoint = 0;
-		});
-		GetWorldTimerManager().SetTimerForNextTick(Delegate);
-	}
+	// UE_LOG(LogTemp, Warning, TEXT("%f"), CurrentFireRatePoint);
 }
 
 void AWeapon::SetFocusMaterial(bool bIsFocused)
@@ -51,6 +45,7 @@ void AWeapon::InteractionComplete(AThirdPersonPlayerCharacter* PlayerCharacterRe
 
 void AWeapon::PickedUpWeapon()
 {
+	if (IsDefaultWeapon) return;
 	bIsInteractable = false;
 	Mesh->SetGenerateOverlapEvents(false);
 	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Ignore);
@@ -61,6 +56,7 @@ void AWeapon::PickedUpWeapon()
 
 void AWeapon::DroppedWeapon()
 {
+	if (IsDefaultWeapon) return;
 	bIsInteractable = true;
 	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1, ECR_Overlap);
 	Mesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_Visibility, ECR_Block);
@@ -84,23 +80,59 @@ bool AWeapon::GetDamageMultiplierBoneHit(const FName& BoneName, float& Damage) c
 	return false;
 }
 
+float AWeapon::GetWeaponDamage(const float InBaseDamage, const float HitDistanceFromShootingPosition) const
+{
+	return InBaseDamage + ((1 - InBaseDamage) / (DamageFalloffDistanceMax - DamageFalloffDistanceStart)) * (HitDistanceFromShootingPosition - DamageFalloffDistanceStart);
+}
+
 bool AWeapon::Reload()
 {
 	if (CurrentBulletsLeft >= MaxBulletsMagazine) return false;
 	if (TotalBulletsLeft <= 0) return false;
+	// PlayerCharacterRef->PlayAnimMontage(CharacterReloadMontage);
+	// if (IsDefaultWeapon) return true;  // Default weapons attached to skeletal meshes do not need animations. Animations are on characters.
 	if (WeaponAnimInstance)
 		WeaponAnimInstance->Reload(SelfReloadMontage);
+	BulletsToAddAfterReloadComplete = MaxBulletsMagazine - CurrentBulletsLeft > TotalBulletsLeft ? TotalBulletsLeft : MaxBulletsMagazine - CurrentBulletsLeft;
 	return true;
 }
 
-bool AWeapon::Shoot(const FVector& StartLocation, const FVector& EndLocation)
+void AWeapon::ReloadCancelled()
 {
-	if (bIsReloadingWeapon || CurrentFireRatePoint < 100.f) return false;
-	if (CurrentBulletsLeft <= 0) {
-		// TODO: Make sound of empty gun
-		return false;
+	BulletsToAddAfterReloadComplete = 0;
+}
+
+void AWeapon::RefillAmmo(int Amount)
+{
+	TotalBulletsLeft = Amount <= 0 ? MaxBulletsHeld : FMath::Min(TotalBulletsLeft + Amount, MaxBulletsHeld);
+}
+
+void AWeapon::ReloadComplete(const uint8 BulletsToAdd)
+{
+	if (BulletsToAdd <= 0) {
+		CurrentBulletsLeft += BulletsToAddAfterReloadComplete;
+		TotalBulletsLeft -= BulletsToAddAfterReloadComplete;
+		BulletsToAddAfterReloadComplete = 0;
+		return;
 	}
-	CurrentBulletsLeft -= 1;
+	BulletsToAddAfterReloadComplete = 0;
+	TotalBulletsLeft -= BulletsToAdd;
+	CurrentBulletsLeft += BulletsToAdd;
+}
+
+bool AWeapon::Shoot(const FVector& StartLocation, const FVector& EndLocation, bool bForceShoot, bool bEventShot, float CustomDamage)
+{
+	BulletsToAddAfterReloadComplete = 0;
+	if (!bEventShot) {
+		if (!bForceShoot && (bIsReloadingWeapon || CurrentFireRatePoint < 99.f)) return false;
+		if (CurrentBulletsLeft <= 0) {
+			// TODO: Make sound of empty gun
+			return false;
+		}
+		CurrentBulletsLeft -= 1;
+	}
+	CurrentFireRatePoint = 0;
+	// if (!IsDefaultWeapon) return true;  // Default weapons attached to skeletal meshes do not need animations. Animations are on characters.
 	const FVector MuzzleLocation = Mesh->GetSocketLocation(FName("Muzzle"));
 	// TODO: spawn muzzle etc.
 	FHitResult HitResult;
@@ -111,12 +143,11 @@ bool AWeapon::Shoot(const FVector& StartLocation, const FVector& EndLocation)
 	const bool bIsHit = GetWorld()->LineTraceSingleByChannel(HitResult, StartLocation, EndLocation, ECollisionChannel::ECC_Visibility, Params);
 	
 	if (!bIsHit) return true;
-	float FinalDamage = BaseDamage;
+	float FinalDamage = GetWeaponDamage(CustomDamage <= 0 ? BaseDamage : CustomDamage, HitResult.Distance);
 	if (!HitResult.BoneName.IsNone())
 		const bool bWasCriticalHit = GetDamageMultiplierBoneHit(HitResult.BoneName, FinalDamage);
 
 	UGameplayStatics::ApplyPointDamage(HitResult.GetActor(), FinalDamage, EndLocation - StartLocation, HitResult, GetInstigatorController(), GetOwner(), WeaponDamageType);
-	CurrentFireRatePoint = 0;
 	//if (ACharacterBase* CharacterHit = Cast<ACharacterBase>(HitResult.GetActor())) {
 		
 		//CharacterHit->HitByWeapon(HitResult.ImpactPoint, HitResult.ImpactNormal, BaseDamage);

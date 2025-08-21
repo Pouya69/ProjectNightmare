@@ -18,7 +18,10 @@ public:
 	UBTTask_FindRandomWalkLocation();
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		bool bIsFlying = false;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 		float RadiusCheck = 800.f;
+
 
 protected:
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;

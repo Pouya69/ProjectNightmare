@@ -69,3 +69,18 @@ AWeapon* UInventoryComponent::DropItem(AWeapon* WeaponToDrop)
 	return nullptr;
 }
 
+AWeapon* UInventoryComponent::GetWeaponByID(int WeaponID) const
+{
+	if (InventoryWeapons.IsEmpty()) return nullptr;
+	for (AWeapon* WeaponItem : InventoryWeapons)
+		if (WeaponItem->WeaponID == WeaponID) return WeaponItem;
+	return nullptr;
+}
+
+int UInventoryComponent::GetWeaponIndex(const AWeapon* WeaponRef) const
+{
+	if (InventoryWeapons.IsEmpty()) return -1;
+	for (int i = 0; i < InventoryWeapons.Num(); i++)
+		if (InventoryWeapons[i] == WeaponRef) return i;
+	return -1;
+}

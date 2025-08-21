@@ -143,7 +143,7 @@ bool ULimbDismemberment::ApplyDismembermentToLimb(const FName& BoneName, const F
 	
 	UE_LOG(LogTemp, Warning, TEXT("%s"), *LimbTransform.ToString());
 	
-	ADismemberedLimb* SpawnedLimb = SpawnLimbByBoneName(BoneName, RootTransform, LimbTransform, true);
+	ADismemberedLimb* SpawnedLimb = SpawnLimbByBoneName(BoneName, Mesh->IsSimulatingPhysics() ? Mesh->GetBoneTransform(FName("pelvis")) : Mesh->GetBoneTransform(FName("root")), Mesh->GetBoneTransform(BoneName), true);
 
 	if (!SpawnedLimb) return false;
 	Mesh->HideBoneByName(BoneName, EPhysBodyOp::PBO_Term);

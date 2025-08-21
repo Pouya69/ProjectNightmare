@@ -10,6 +10,20 @@
  * 
  */
 
+
+USTRUCT(BlueprintType)
+struct FWeaponDataTable : public FTableRowBase
+{
+	GENERATED_USTRUCT_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		int WeaponID = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		FString Description;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		UTexture2D* WeaponImage;
+};
+
 UCLASS()
 class PROJECTNIGHTMARE_API AWeapon : public AInteractableObject
 {
@@ -24,14 +38,22 @@ protected:
 	virtual void BeginPlay() override;
 
 public:
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		int WeaponID = 0;
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
-
-	// If <= 0, it is a singleshot weapon. In Miliseconds
-
+	// This matches with the Player Combo Component ECombatComboType.
+	UPROPERTY(EditAnywhere)
+		uint8 WeaponCombatType;
+	UPROPERTY(EditAnywhere)
+		bool IsDefaultWeapon = false;
+	UPROPERTY(EditAnywhere)
+		bool DoesReloadAddOneBullet = false;
 
 	UPROPERTY(EditAnywhere)
 		float FireRate = -1;
+	UPROPERTY(EditAnywhere)
+		int ShotsDoneBeforeGravityEnabled = 5;
 	bool bIsFiring = false;
 	float CurrentFireRatePoint = 0.f;
 
@@ -41,22 +63,38 @@ public:
 	UPROPERTY(EditAnywhere)
 		USkeletalMeshComponent* Mesh;
 
+	UPROPERTY(EditAnywhere)
+		TSubclassOf<UCameraShakeBase> ShootingCameraShake;
 	UFUNCTION(BlueprintCallable)
 		FORCEINLINE USkeletalMeshComponent* GetMesh() { return Mesh; }
 	
 	virtual void SetFocusMaterial(bool bIsFocused) override;
 	virtual void InteractionComplete(class AThirdPersonPlayerCharacter* PlayerCharacterRef) override;
-	void PickedUpWeapon();
-	void DroppedWeapon();
+	virtual void PickedUpWeapon();
+	virtual void DroppedWeapon();
 public:
 	// Animation
 	class UWeaponAnimInstance* WeaponAnimInstance;
 	UPROPERTY(EditAnywhere)
 		UAnimMontage* ReloadMontage;
 	UPROPERTY(EditAnywhere)
+		UAnimMontage* CharacterReloadMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* CharacterReloadMovingMontage;
+	UPROPERTY(EditAnywhere)
 		UAnimMontage* ReloadADSMontage;
 	UPROPERTY(EditAnywhere)
+		UAnimMontage* CharacterReloadADSMontage;
+	UPROPERTY(EditAnywhere)
 		UAnimMontage* ShootMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* CharacterShootMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* CharacterMovingShootMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* CharacterMovingADSShootMontage;
+	UPROPERTY(EditAnywhere)
+		UAnimMontage* CharacterShootMontage_ComboEnd;
 	UPROPERTY(EditAnywhere)
 		UAnimMontage* EquipMontage;
 	UPROPERTY(EditAnywhere)
@@ -97,18 +135,38 @@ public:
 	// Combat
 	UPROPERTY(EditAnywhere)
 		float BaseDamage;
+	UPROPERTY(EditAnywhere)
+		float DamageFalloffDistanceStart = 100.f;
+	// If distance is equal or more than this, the damage will be 1.
+	UPROPERTY(EditAnywhere)
+		float DamageFalloffDistanceMax = 800.f;
+	// If less equal 0, that means no falloff.
+	// ShootLocation is when it got shot. JUST 
+	UFUNCTION(BlueprintCallable)
+		FORCEINLINE float GetWeaponDamage(const float InBaseDamage, const float HitDistanceFromShootingPosition) const;
+	UPROPERTY(BlueprintReadWrite)
+		int BulletsToAddAfterReloadComplete = 0;
 	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		int CurrentBulletsLeft;
-	UPROPERTY(EditAnywhere)
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		int MaxBulletsMagazine;
-	UPROPERTY(EditAnywhere)
+	// Max amount that can be held in inventory.
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
+		int MaxBulletsHeld = 30;
+	UPROPERTY(EditAnywhere, BlueprintReadOnly)
 		int TotalBulletsLeft;
 	UFUNCTION(BlueprintCallable)
-		bool Reload();
+		virtual bool Reload();
+	UFUNCTION(BlueprintCallable)
+		void RefillAmmo(int Amount = -1);
+	UFUNCTION(BlueprintCallable)
+		virtual void ReloadCancelled();
+	UFUNCTION(BlueprintCallable)
+		virtual void ReloadComplete(const uint8 BulletsToAdd = 0);
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 		bool bIsReloadingWeapon;
 	UFUNCTION(BlueprintCallable)
-		bool Shoot(const FVector& StartLocation, const FVector& EndLocation);
+		virtual bool Shoot(const FVector& StartLocation, const FVector& EndLocation, bool bForceShoot = false, bool bEventShot = false, float CustomDamage=-1.f);
 	UFUNCTION(BlueprintCallable)
-		bool WeaponHasOwner() const;
+		virtual bool WeaponHasOwner() const;
 };

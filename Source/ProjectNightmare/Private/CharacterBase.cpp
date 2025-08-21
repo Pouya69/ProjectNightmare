@@ -107,13 +107,19 @@ void ACharacterBase::Die()
 		//Controller->Destroy();
 	Health = 0;
 	// SetActorTickEnabled(false);
-	GetMesh()->SetAnimInstanceClass(nullptr);
+	
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 	// GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
-	DisableInput(GetLocalViewingPlayerController());
-	GetMesh()->SetBodySimulatePhysics(FName("root"), true);
-	GetMesh()->SetSimulatePhysics(true);
+
+
+	// GetMesh()->SetAnimInstanceClass(nullptr);
+	// GetMesh()->SetBodySimulatePhysics(FName("root"), true);
+	// GetMesh()->SetSimulatePhysics(true);
+
+	// Death Montage plays when shot.
+	//if (DeathMontage)
+		//PlayAnimMontage(DeathMontage);
 	OnDeath.Broadcast();
 	
 }
@@ -137,6 +143,16 @@ float ACharacterBase::GetCapsuleRadius() const
 float ACharacterBase::GetCapsuleHalfHeight() const
 {
 	return GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+}
+
+FVector ACharacterBase::GetCharacterVelocity() const
+{
+	return GetCharacterMovement()->Velocity;
+}
+
+void ACharacterBase::SetCharacterVelocity(const FVector NewVelocity) const
+{
+	GetCharacterMovement()->Velocity = NewVelocity;
 }
 
 void ACharacterBase::UpdateRagdollState()
@@ -195,9 +211,15 @@ void ACharacterBase::StartRagdolling()
 	GetMesh()->SetAllBodiesBelowSimulatePhysics(FName("pelvis"), true);
 	GetMesh()->SetSimulatePhysics(true);
 	GetCharacterMovement()->DisableMovement();
-	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+	GetCapsuleComponent()->SetCollisionEnabled(IsAlive() ? ECollisionEnabled::QueryOnly : ECollisionEnabled::NoCollision);
 	bIsRagdolling = true;
-	UpdateRagdollState();
+	if (IsAlive())
+		UpdateRagdollState();
+}
+
+FVector ACharacterBase::GetPelvisLocation() const
+{
+	return GetMesh()->GetSocketLocation(FName("pelvis"));
 }
 
 void ACharacterBase::StopRagdollingBackToAnimation()
@@ -257,14 +279,29 @@ void ACharacterBase::AddImpulseToCharacter(const FVector& Impulse)
 }
 
 
+void ACharacterBase::PlayHitReactionMontage(const float SignedAngle)
+{
+	if (ReactHitMontageAdditive_Back && SignedAngle < -90 && SignedAngle > 90) // From Back
+		PlayAnimMontage(ReactHitMontageAdditive_Back);
+	//else if (SignedAngle < 0 && SignedAngle > -90) // Right
+	else if (ReactHitMontageAdditive_Front && SignedAngle < 90 && SignedAngle > -90)  // Front
+		PlayAnimMontage(ReactHitMontageAdditive_Front);
+	else if (ReactHitMontageAdditive_Right && SignedAngle < 90 && SignedAngle > 0)  // Right
+		PlayAnimMontage(ReactHitMontageAdditive_Right);
+	else if (ReactHitMontageAdditive_Left && SignedAngle > -90 && SignedAngle < 0)  // Left
+		PlayAnimMontage(ReactHitMontageAdditive_Left);
+	else
+		PlayAnimMontage(ReactHitMontageAdditive_Front);
+}
+
 void ACharacterBase::ApplyDismembermentToLimb(const FName& BoneName, FVector Impulse, FVector HitLocation, bool bForced)
 {
 	if (!DismembermentComp || BoneName.IsNone()) return;
 	const bool bIsHead = BoneName.IsEqual(DismembermentComp->Head) || BoneName.IsEqual(DismembermentComp->Neck);
 	const bool bResult = DismembermentComp->ApplyDismembermentToLimb(BoneName, Impulse, HitLocation, bForced);
 	if (IsAlive() && bResult) {
+		StopMyMovement();
 		if (bIsHead) {
-			StopMyMovement();
 			bIsMarkedForDeath = true;
 			if (bIsCrawling)
 				Die();
@@ -325,7 +362,7 @@ void ACharacterBase::StandingEventDone()
 	GetCharacterMovement()->SetMovementMode(EMovementMode::MOVE_Walking);
 }
 
-void ACharacterBase::ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bIsAttached, bool bPlayNiagara, bool bSlowDownPlayer)
+void ACharacterBase::ApplyEpicEffect(float TimeDilationAmount, FVector Location, float Duration, bool bIsAttached, bool bPlayNiagara, bool bSlowDownPlayer, float PlayerSlowdownCustomRate)
 {
 	if (bPlayNiagara) {
 		if (bIsAttached)
@@ -354,4 +391,27 @@ void ACharacterBase::ApplyEpicEffect(float TimeDilationAmount, FVector Location,
 
 void ACharacterBase::StopMyMovement()
 {
+}
+
+
+
+float ACharacterBase::GetMovementSpeed(EMovementMode InMovementMode) const
+{
+	switch (InMovementMode)
+	{
+	case MOVE_None:
+		break;
+	case MOVE_Walking:
+		return GetCharacterMovement()->MaxWalkSpeed;
+		break;
+	case MOVE_Swimming:
+		return GetCharacterMovement()->MaxSwimSpeed;
+		break;
+	case MOVE_Flying:
+		return GetCharacterMovement()->MaxFlySpeed;
+		break;
+	default:
+		break;
+	}
+	return 0.0f;
 }

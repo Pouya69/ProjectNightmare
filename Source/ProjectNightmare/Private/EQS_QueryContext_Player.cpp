@@ -10,10 +10,6 @@
 void UEQS_QueryContext_Player::ProvideContext(FEnvQueryInstance& QueryInstance, FEnvQueryContextData& ContextData) const
 {
 	Super::ProvideContext(QueryInstance, ContextData);
-	AFemaleMutantCharacter* FemaleCharacterOwner = Cast<AFemaleMutantCharacter>(QueryInstance.Owner);
-	if (FemaleCharacterOwner) {
-		UEnvQueryItemType_Actor::SetContextHelper(ContextData, FemaleCharacterOwner);
-	}
-	// AFemaleMutantAIController* AIController = Cast<AFemaleMutantAIController>(FemaleCharacterOwner->GetController());
-	
+	if (AFemaleMutantCharacter* FemaleCharacterOwner = Cast<AFemaleMutantCharacter>(QueryInstance.Owner))
+		UEnvQueryItemType_Actor::SetContextHelper(ContextData, FemaleCharacterOwner->EnemyAIController->SoftPlayerRef_READONLY);
 }

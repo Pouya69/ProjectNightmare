@@ -24,9 +24,13 @@ void AInteractableObject::BeginPlay()
 	Super::BeginPlay();
 	InteractUserWidgetComp = FindComponentByClass<UWidgetComponent>();
 	// if (InteractUserWidgetComp == nullptr) return;
-	InteractionWidget = Cast<UInteractionWidget>(InteractUserWidgetComp->GetWidget());
-	InteractionWidget->SetVisibility(ESlateVisibility::Hidden);
-	InteractionWidget->Percent = &InteractionPercent;
+	if (InteractUserWidgetComp) {
+		InteractionWidget = Cast<UInteractionWidget>(InteractUserWidgetComp->GetWidget());
+		if (InteractionWidget) {
+			InteractionWidget->SetVisibility(ESlateVisibility::Hidden);
+			InteractionWidget->Percent = &InteractionPercent;
+		}
+	}
 	StaticMeshComp = FindComponentByClass<UStaticMeshComponent>();
 }
 
@@ -46,6 +50,7 @@ void AInteractableObject::HoldInteract(AThirdPersonPlayerCharacter* PlayerCharac
 	// InteractionWidget->SetInteractionPercent(InteractionPercent);
 	if (InteractionPercent == 100.f) {
 		InteractionComplete(PlayerCharacterRef);
+		InteractionComplete_Finished_Event(PlayerCharacterRef);
 		PlayerCharacterRef->StopInteract();
 	}
 }
@@ -86,3 +91,6 @@ void AInteractableObject::InteractionComplete()
 	StopInteraction();
 }
 
+void AInteractableObject::InteractionComplete_Finished_Event_Implementation(AThirdPersonPlayerCharacter* PlayerCharacterRef)
+{
+}

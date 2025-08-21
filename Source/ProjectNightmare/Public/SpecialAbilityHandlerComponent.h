@@ -38,6 +38,16 @@ public:
 	
 	class AThirdPersonPlayerCharacter* PlayerCharacterRef;
 
+	float CurrentTargetCompletionSeconds = 0.f;
+	float CurrentAbilityCompletionAmount = 0.f;
+
+	void HandleCameraPostEffects(const float* DeltaTime, FPostProcessSettings* CameraPostProcess);
+	void HandleResettingCameraPostEffects(const float* DeltaTime, FPostProcessSettings* CameraPostProcess);
+	bool bIsMarkedForReset = false;
+
+	FORCEINLINE float MapRangeClamped(float Value, float InRangeA, float InRangeB, float OutRangeA, float OutRangeB) const;
+
+
 public:
 	// Launch
 	UFUNCTION(BlueprintCallable, Category="Abilities")
@@ -46,10 +56,24 @@ public:
 public:
 	// Freeze Time
 	FTimerHandle FreezeTimeTimerHandle;
+	void HandleFreezeTimeCameraPostProcess(FPostProcessSettings* CameraPostProcess);
 	UPROPERTY(EditAnywhere, Category="Freeze Time")
 		float FreezeTimeAmount = 5.f;
 	UFUNCTION(BlueprintCallable, Category = "Abilities")
 		void FreezeTime();
+
+public:
+	FLensSettings LensSettings;
+	// Camera Post Process
+	UPROPERTY(EditAnywhere, Category = "Camera Post Process")
+		float CameraPostEffectResetSpeed = 0.f;
+	UPROPERTY(EditAnywhere, Category = "Camera Post Process | Freeze Time")
+		TSubclassOf<UCameraShakeBase> FreezeTimeProgressCameraShake;
+	UPROPERTY(EditAnywhere, Category = "Camera Post Process | Freeze Time")
+		float FreezeTimeChromaticAberrationMax = 50.f;
+	UPROPERTY(EditAnywhere, Category = "Camera Post Process | Freeze Time")
+		float FreezeTimeVignetteMax = 100.f;
+		
 
 public:
 	// Animations

@@ -22,6 +22,13 @@ protected:
 
 public:
 	virtual void Tick(float DeltaTime) override;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		AActor* FourthDimensionLocationActor;
+	UPROPERTY(EditAnywhere)
+		TSubclassOf<class AFourthDimension_Portal> PortalToOverworldClass;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+		class AFourthDimension_Portal* PortalToOverworld;
 	UPROPERTY(BlueprintReadOnly)
 		class AThirdPersonPlayerCharacter* PlayerCharacter;
+
 };
